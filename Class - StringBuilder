@@ -1,0 +1,20 @@
+Option Compare Database
+Option Explicit
+
+Private strResult As String
+
+Public Sub Append(strNew As String)
+    strResult = strResult & strNew
+End Sub
+
+Public Sub AppendLine(strNew As String)
+    strResult = strResult & vbCrLf & strNew
+End Sub
+
+Public Function ToString()
+    ToString = strResult
+End Function
+
+Public Sub Clear()
+    strResult = ""
+End Sub
