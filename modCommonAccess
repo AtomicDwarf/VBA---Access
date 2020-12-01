@@ -1,0 +1,438 @@
+Option Compare Database
+
+Sub ObjectInventory()
+  'Creates a list of all the objects in the database. Saves the entries in tblObjects
+  Dim i As Integer, dox As Documents, n As Integer
+  Dim db As Database, rs As DAO.Recordset
+  Dim strObjectName As String, strObjectType As String, strNotes
+  Dim frm As Form
+  
+  Set db = CurrentDb()
+  Set rs = db.OpenRecordset("tblObjects")
+  
+  On Error Resume Next
+  
+  '*** Tables
+  For i = 0 To CurrentDb.TableDefs.Count - 1
+    'Debug.Print "Table: " & CurrentDb.TableDefs(i).Name
+    strObjectName = CurrentDb.TableDefs(i).Name
+    If IsNull(DLookup("ObjectName", "tblObjects", "ObjectName='" & strObjectName & "'")) Then 'If already catalogged, skip
+        rs.AddNew
+        rs!ObjectName = CurrentDb.TableDefs(i).Name
+        rs!ObjectType = "Table"
+        rs!CreatedDate = CurrentDb.TableDefs(i).DateCreated
+        rs!ModifiedDate = CurrentDb.TableDefs(i).LastUpdated
+        rs!notes = CurrentDb.TableDefs(i).Connect
+        rs.Update
+        MsgBox CurrentDb.TableDefs(i).Properties
+    End If
+  Next
+  
+  '*** Queries
+  For i = 0 To CurrentDb.QueryDefs.Count - 1
+      'Debug.Print "Query: " & CurrentDb.QueryDefs(i).Name
+      strObjectName = CurrentDb.QueryDefs(i).Name
+      strObjectType = "Query"
+      strNotes = CurrentDb.QueryDefs(i).SQL
+      If strObjectName <> "" And Left(strObjectName, 1) <> "~" Then
+          If IsNull(DLookup("ObjectName", "tblObjects", "ObjectName='" & strObjectName & "'")) Then 'If already catalogged, skip
+            rs.AddNew
+            rs!ObjectName = strObjectName
+            rs!ObjectType = strObjectType
+            rs!CreatedDate = CurrentDb.QueryDefs(i).DateCreated
+            rs!ModifiedDate = CurrentDb.QueryDefs(i).LastUpdated
+            rs!notes = strNotes
+            rs.Update
+        End If
+      End If
+  Next
+  
+  '*** Reports
+  Set dox = db.Containers!Reports.Documents
+  n = dox.Count               ' Remember number of reports.
+  For i = 0 To n - 1
+      'Debug.Print "Report: " & dox(i).Name
+    strObjectName = dox(i).Name
+    If IsNull(DLookup("ObjectName", "tblObjects", "ObjectName='" & strObjectName & "'")) Then 'If already catalogged, skip
+        rs.AddNew
+        rs!ObjectName = dox(i).Name
+        rs!ObjectType = "Report"
+        rs!CreatedDate = dox(i).DateCreated
+        rs!ModifiedDate = dox(i).LastUpdated
+        rs.Update
+    End If
+  Next
+  
+  '*** Forms
+  Set dox = db.Containers!Forms.Documents
+  n = dox.Count               ' Remember number of forms.
+  For i = 0 To n - 1
+      'Debug.Print "Report: " & dox(i).Name
+      strObjectName = dox(i)
+      If IsNull(DLookup("ObjectName", "tblObjects", "ObjectName='" & strObjectName & "'")) Then 'If already catalogged, skip
+        rs.AddNew
+        rs!ObjectName = dox(i).Name
+        rs!ObjectType = "Form"
+        rs!CreatedDate = dox(i).DateCreated
+        rs!ModifiedDate = dox(i).LastUpdated
+        rs.Update
+    End If
+  Next
+      
+ 
+End Sub
+
+Sub FieldList(Optional strRecordSet As String = "")
+  'Print a list of fields in a given table or query
+  Dim db As Database
+  Dim rst As DAO.Recordset
+  Dim i As Integer, iFields As Integer
+  
+  If strRecordSet = "" Then
+      vRecordset = InputBox("Please enter the name of the table or query.", "Table/Query")
+  End If
+  
+  If strRecordSet = "" Then Exit Sub
+  
+  Set db = CurrentDb
+  
+  Set rst = db.OpenRecordset(vRecordset, dbOpenDynaset)
+  
+  iFields = rst.Fields.Count
+  
+  For i = 0 To iFields - 1
+      With rst
+          Debug.Print .Fields(i).Name,
+          Debug.Print Tab(30), FieldTypeText(.Fields(i).Type)
+      End With
+  Next i
+  
+  rst.Close
+End Sub
+
+Function FieldTypeText(i As Integer) As String
+  'Convert the field type of a field from a number to text
+  Dim x As String
+  
+  Select Case i
+      Case dbBigInt
+          x = "Big Integer"
+      Case dbBinary
+          x = "Binary"
+      Case dbBoolean
+          x = "Boolean"
+      Case dbByte
+          x = "Byte"
+      Case dbChar
+          x = "Char"
+      Case dbCurrency
+          x = "Currency"
+      Case dbDate
+          x = "Date/Time"
+      Case dbDecimal
+          x = "Decimal"
+      Case dbDouble
+          x = "Double"
+      Case dbFloat
+          x = "Float"
+      Case dbGUID
+          x = "GUID"
+      Case dbInteger
+          x = "Integer"
+      Case dbLong
+          x = "Long"
+      Case dbLongBinary
+          x = "Long Binary (OLE Object)"
+      Case dbMemo
+          x = "Memo"
+      Case dbNumeric
+          x = "Numeric"
+      Case dbSingle
+          x = "Single"
+      Case dbText
+          x = "Text"
+      Case dbTime
+          x = "Time"
+      Case dbTimeStamp
+          x = "Time Stamp"
+      Case dbVarBinary
+          x = "VarBinary"
+  End Select
+  FieldTypeText = x
+End Function
+
+Sub ControlList(strForm As String)
+  '*** INCOMPLETE ***
+  Dim frm As Form, db As Database, app As Application, iControls As Integer, CTL As Control
+  
+  For Each frm In frm.Controls
+  
+End Sub
+
+Function QueryExists(strQueryName As String) As Boolean
+  'Check to see if a given query exists in the database
+  Dim qry As QueryDef, Found As Boolean
+  
+  Found = False
+  For Each qry In CurrentDb.QueryDefs
+      If qry.Name = strQueryName Then Found = True
+  Next qry
+  
+  QueryExists = Found
+End Function
+Function WhereAmI() As String
+  'Returns the path of this database
+  WhereAmI = PathFromFullPath(CurrentDb.Name)
+End Function
+
+Function WhoAmI() As String
+  'Returns the (file) name of this database
+  WhoAmI = FileNameFromFullPath(CurrentDb.Name)
+End Function
+
+Sub Text2Clipboard(x As String)
+  'Adds given text to windows clipboard
+  Dim d As MSForms.DataObject
+
+  Set d = New MSForms.DataObject
+  d.SetText Nz(Me.txtMyTextBox.Value, "")
+  d.PutInClipboard
+  Set d = Nothing
+
+End Sub
+
+Function VersionDate() As Date
+  'Return the latest version date from the Version History table
+  VersionDate = DMax("VersionDate", "tblVersionHistory")
+End Function
+Function VersionNumber() As String
+  'Return the latest version number from the Version History table
+  VersionNumber = DMax("VersionNumber", "tblVersionHistory")
+End Function
+
+Function YearEnd() As Date
+    YearEnd = DateValue(DLookup("PreferenceValue", "tblPreferences", "PreferenceName='YearEnd'"))
+End Function
+Function FileExists(FileName As String) As Boolean
+  'Check to see if a file exists given the fully qualified path and name
+  FileExists = (Dir(FileName) > "")
+End Function
+
+Public Function TableExists(sTable As String) As Boolean
+  'Check to see if a particular table exists
+  Dim db As Database
+  Dim tbl As TableDef
+  Set db = CurrentDb()
+  
+  TableExists = False
+  
+  For Each tbl In db.TableDefs
+      If tbl.Name = sTable Then TableExists = True
+  Next tbl
+  
+End Function
+
+Function FixPath(strPath As String) As String
+    'If the last character of the path string is not \ then add it
+    FixPath = strPath
+    If strPath <> "" Then
+        If Right(strPath, 1) <> "\" Then
+            FixPath = strPath & "\"
+        End If
+    End If
+End Function
+
+Public Function GetFileName() As String
+'Requires reference to Microsoft Office 11.0 Object Library.
+'allows user to select file
+
+ Dim fDialog As Office.FileDialog
+ Dim varFile As Variant
+
+ ' Clear listbox contents.
+ 'Me.FileList.RowSource = ""
+
+ ' Set up the File Dialog.
+ Set fDialog = Application.FileDialog(msoFileDialogFilePicker)
+
+ With fDialog
+
+    ' Allow user to make multiple selections in dialog box or not
+    .AllowMultiSelect = False
+          
+    ' Set the title of the dialog box.
+    .Title = "Please select one or more files"
+
+    ' Clear out the current filters, and add our own.
+    .Filters.Clear
+    .Filters.Add "Access Databases", "*.MDB"
+    .Filters.Add "Access Projects", "*.ADP"
+    .Filters.Add "All Files", "*.*"
+
+    ' Show the dialog box. If the .Show method returns True, the
+    ' user picked at least one file. If the .Show method returns
+    ' False, the user clicked Cancel.
+    If .Show = True Then
+
+       'Loop through each file selected and add it to our list box.
+       For Each varFile In .SelectedItems
+          GetFileName = varFile
+       Next
+      
+    Else
+       MsgBox "You clicked Cancel in the file dialog box."
+    End If
+ End With
+End Function
+
+Public Function GetFolderName() As String
+' Requires reference to Microsoft Office 11.0 Object Library.
+'Allows user to select a folder name
+ Dim fDialog As Office.FileDialog
+ Dim varFile As Variant
+
+ ' Clear listbox contents.
+ 'Me.FileList.RowSource = ""
+
+ ' Set up the File Dialog.
+ Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
+
+ With fDialog
+
+    ' Allow user to make multiple selections in dialog box or not
+    .AllowMultiSelect = False
+          
+    ' Set the title of the dialog box.
+    .Title = "Please select one or more folders"
+
+    ' Clear out the current filters, and add our own.
+    '.Filters.Clear
+    '.Filters.Add "Access Databases", "*.MDB"
+    '.Filters.Add "Access Projects", "*.ADP"
+    '.Filters.Add "All Files", "*.*"
+
+    ' Show the dialog box. If the .Show method returns True, the
+    ' user picked at least one file. If the .Show method returns
+    ' False, the user clicked Cancel.
+    If .Show = True Then
+
+       'Loop through each folder selected and add it to our list box.
+       For Each varFile In .SelectedItems
+          GetFolderName = varFile
+       Next
+      
+    Else
+       GetFolderName = ""
+       'MsgBox "You clicked Cancel in the file dialog box."
+    End If
+ End With
+End Function
+
+Function FormatText(strMessage As String, iStringLength As Integer) As String
+  'Given a phrase in a string and a length, this function reformats the string
+  'breaking at spaces so the no line is over the given number in length
+  
+  Dim strNewMessage As String, i As Integer, LastSpace As Integer, LastAnchor As Integer
+  Dim x As String, n As Integer
+  
+  LastSpace = 0
+  x = strMessage
+  strNewMessage = ""
+  n = Len(x)
+  i = 1
+  
+  Do
+      If Mid(x, i, 1) = " " Then LastSpace = i
+      If i Mod iStringLength = 0 Then
+          strNewMessage = strNewMessage & Mid(x, 1, (LastSpace - 1)) & vbCrLf
+          i = 1
+          x = Mid(x, LastSpace + 1, Len(x) - LastSpace)
+          n = Len(x)
+      Else
+          i = i + 1
+      End If
+  Loop Until Len(x) <= iStringLength
+  strNewMessage = strNewMessage & Mid(x, 1, Len(x))
+  FormatText = strNewMessage
+End Function
+
+Function LastDayMonth(iMonth As Integer, iYear As Integer) As Date
+    'Given the month and year, return the last day of the month
+    If iMonth = 12 Then
+        LastDayMonth = DateSerial(iYear + 1, 1, 1) - 1
+    Else
+        LastDayMonth = DateSerial(iYear, iMonth + 1, 1) - 1
+    End If
+End Function
+
+Function FirstDayMonth(iMonth As Integer, iYear As Integer) As Date
+    'Given the month and year, return the first day of the month
+    FirstDayMonth = DateSerial(iYear, iMonth, 1)
+End Function
+
+Public Sub SortArray(ByRef TheArray As Variant)
+'This Code Developed by Chris Vann
+'Just copy it into a separate module, then call it from
+'anywhere in your program as SortArray ArrayGoesHere
+Dim Temp As Variant, x As Integer, Sorted As Boolean
+Sorted = False
+Do While Not Sorted
+    Sorted = True
+    For x = 0 To UBound(TheArray) - 1
+        If TheArray(x) > TheArray(x + 1) Then
+            Temp = TheArray(x + 1)
+            TheArray(x + 1) = TheArray(x)
+            TheArray(x) = Temp
+            Sorted = False
+        End If
+    Next x
+Loop
+End Sub
+
+Function ProperCase(x As String)
+    'Given a string, return the string in proper case
+    'Converts the first letter of every word in string to uppercase.
+    ProperCase = StrConv(x, vbProperCase)
+End Function
+
+Public Sub Testit2()
+    Dim prtDefault As Printer
+
+    'Set Application.Printer = Application.Printers(0)
+
+    Set prtDefault = Application.Printer
+
+    With prtDefault
+        MsgBox "Device name: " & .DeviceName & vbCr _
+            & "Driver name: " & .DriverName & vbCr _
+            & "Port: " & .Port
+    End With
+
+    
+End Sub
+
+Function PathFromFullPath(strPath As String) As String
+    'Extracts the path from a full "path\file name" string
+    Dim iPos As Long
+On Error GoTo HandleError
+    
+    iPos = InStrRev(strPath, "\") 'Look for the last backslash in the string
+    PathFromFullPath = Mid(strPath, 1, iPos) 'get the portion from the beginning to the last backslash
+    Exit Function
+
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "Global Subs", "FileNameFromPath"
+    PathFromFullPath = ""
+End Function
+
+Function FileNameFromFullPath(strPath As String) As String
+    Dim iPos As Long
+On Error GoTo HandleError
+    iPos = InStrRev(strPath, "\")
+    FileNameFromFullPath = Mid(strPath, iPos + 1)
+    Exit Function
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "Global Subs", "FileNameFromPath"
+    FileNameFromFullPath = ""
+End Function
+
