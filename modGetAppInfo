@@ -1,0 +1,136 @@
+Option Compare Database
+Option Explicit
+'Added 04/04/2018 - MAM
+
+'Function WhereAmI() As String
+'  'Returns the path of this database
+'  WhereAmI = PathFromFullPath(CurrentDb.Name)
+'End Function
+
+Function WhereAmI() As String
+    WhereAmI = Left(CurrentDb.Name, InStrRev(CurrentDb.Name, "\"))
+End Function
+
+Function WhoAmI() As String
+  'Returns the (file) name of this database
+  WhoAmI = FileNameFromFullPath(CurrentDb.Name)
+End Function
+
+Function WhyAmI() As String
+  WhyAmI = "If I knew that, I probably wouldn't be here!"
+End Function
+Function WhatAmI() As String
+  WhatAmI = "I'm a Microsoft Access Application"
+End Function
+Function WhenAmI() As String
+  WhenAmI = Now()
+End Function
+
+Function PathFromFullPath(strPath As String) As String
+    'Extracts the path from a full "path\file name" string
+    Dim iPos As Long
+On Error GoTo HandleError
+    
+    iPos = InStrRev(strPath, "\") 'Look for the last backslash in the string
+    PathFromFullPath = Mid(strPath, 1, iPos) 'get the portion from the beginning to the last backslash
+    Exit Function
+
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "Global Subs", "FileNameFromPath"
+    PathFromFullPath = ""
+End Function
+
+Function FileNameFromFullPath(strPath As String) As String
+    'Extracts the file name from a full "path\file name" string
+    Dim iPos As Long
+On Error GoTo HandleError
+    iPos = InStrRev(strPath, "\")
+    FileNameFromFullPath = Mid(strPath, iPos + 1)
+    Exit Function
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "Global Subs", "FileNameFromPath"
+    FileNameFromFullPath = ""
+End Function
+
+Function FileExtFromFullFileName(strPath As String) As String
+    'Extracts the file name from a full "filename.ext" string
+    Dim iPos As Long
+On Error GoTo HandleError
+    iPos = InStrRev(strPath, ".")
+    FileExtFromFullFileName = Mid(strPath, iPos + 1)
+    Exit Function
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "Global Subs", "FileNameFromPath"
+    FileExtFromFullFileName = ""
+End Function
+Function FileNameFromFullFileName(strPath As String) As String
+    'Extracts the file name from a full "filename.ext" string
+    Dim iPos As Long
+On Error GoTo HandleError
+    iPos = InStrRev(strPath, ".")
+    FileNameFromFullFileName = Left(strPath, iPos - 1)
+    Exit Function
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "Global Subs", "FileNameFromPath"
+    FileNameFromFullFileName = ""
+End Function
+
+Function FileExtension(strFileName As String) As String
+    Dim iPos As Long
+
+    iPos = InStrRev(strFileName, ".")
+    FileExtension = Trim(Mid(strFileName, iPos + 1, 10))
+
+End Function
+
+Function NTUser() As String
+    NTUser = Environ("UserName")
+End Function
+
+Function ComputerName() As String
+    ComputerName = Environ("ComputerName")
+End Function
+
+Function GetServerPath()
+    Dim intPosition1 As Integer, intPosition2 As Integer
+    Dim strConnection As String, strDBPath As String
+    
+    If ComputerName = "DEVCBR2DBA" Or ComputerName = "PRDCBR2DBA" Then
+        GetServerPath = "\\" & ComputerName
+    Else
+'        If TableExists("tblActivityLog") Then
+'            strConnection = CurrentDb.TableDefs("tblActivityLog").Connect
+'
+'            intPosition1 = InStr(1, strConnection, "\\")
+'            intPosition2 = InStr(intPosition1 + 2, strConnection, "\")
+'            GetServerPath = Mid(strConnection, intPosition1, intPosition2 - intPosition1)
+            
+            strDBPath = CurrentDb.Name
+                    
+            intPosition1 = InStr(1, strDBPath, "\\")
+            intPosition2 = InStr(intPosition1 + 2, strDBPath, "\")
+            GetServerPath = Mid(strDBPath, intPosition1, intPosition2 - intPosition1)
+'        End If
+    
+    End If
+    
+End Function
+
+Function GetUNCPath(path As String) As String
+    Dim fso As Object, shareName
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    shareName = fso.GetDrive( _
+                            fso.GetDriveName(path)).shareName
+
+    'sharename is empty if it wasn't a network mapped drive (e.g. local C: drive)
+    If shareName <> "" Then
+        GetUNCPath = shareName & Right(path, Len(path) - InStr(1, path, "\"))
+    Else
+        GetUNCPath = path
+    End If
+
+End Function
+
+
+
