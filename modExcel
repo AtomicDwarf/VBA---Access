@@ -1,0 +1,692 @@
+Option Compare Database
+Option Explicit
+
+Sub xlTryIt()
+         Dim xlApp As Excel.Application
+         Dim xlBook As Excel.Workbook
+         Dim xlSheet As Excel.Worksheet
+         Dim i As Integer, N As Integer
+         
+         Set xlApp = New Excel.Application 'CreateObject("Excel.Application")
+         Set xlBook = xlApp.Workbooks.Add
+         Set xlSheet = xlBook.Worksheets("Sheet1")
+         
+         xlApp.Visible = True
+         
+         'XLWriteValueToCell - Write a value to a range of cells
+         'XLWriteValueToCell "This is a test.", xlSheet, "A1:M10"
+         
+         'XLWriteFormulaToCell "=3*2", xlSheet, "D12"
+         
+         'XLDeleteColumns "C", "E", xlSheet
+         
+         'XLDeleteRows 1, 2, xlSheet
+         
+         'XLInsertColumns "C", "E", xlSheet
+         
+         'XLInsertRows 1, 2, xlSheet
+         
+         'XLClearCellContents "A3:B4", xlSheet
+         
+         'XLInsertQuery "qryCallData", xlSheet, "C10", True
+         
+         'MsgBox xlFindColumn("test", xlSheet)
+         
+        For i = 0 To 56
+            With xlSheet
+                .Range("A1") = "ColorIndex"
+                .Range("B1") = "Color"
+                .Range(XLCellAddress(1, i + 2)) = i
+                .Range(XLCellAddress(2, i + 2)).Interior.ColorIndex = i
+            End With
+        Next i
+        
+         xlBook.Saved = False
+         Set xlSheet = Nothing
+         Set xlBook = Nothing
+         'xlApp.Quit
+         Set xlApp = Nothing
+
+End Sub
+
+Sub XLWriteValueToCell(varValue As Variant, xlSheet As Excel.Worksheet, strRange As String)
+    xlSheet.Range(strRange).Value = varValue
+End Sub
+
+Sub XLWriteFormulaToCell(strValue As String, xlSheet As Excel.Worksheet, strRange As String)
+    If Left(strValue, 1) <> "=" Then
+        strRange = "=" & strRange
+    End If
+    xlSheet.Range(strRange).FormulaR1C1 = strValue
+    'xlSheet.Range(strRange).Value = varValue
+End Sub
+
+Sub XLDeleteColumns(xlSheet As Excel.Worksheet, lCol1 As Long, Optional lCol2 As Long = 0)
+    Dim strColumns As String
+    If lCol2 = 0 Then lCol2 = lCol1
+    strColumns = XLColNumToLetters(lCol1) & ":" & XLColNumToLetters(lCol2)
+    xlSheet.Range(strColumns).EntireColumn.Delete
+End Sub
+
+Sub XLDeleteRows(xlSheet As Excel.Worksheet, lRow1 As Long, Optional lRow2 As Long = 0)
+    Dim strRows As String
+    If lRow2 = 0 Then lRow2 = lRow1
+    strRows = Trim(Str(lRow1)) & ":" & Trim(Str(lRow2))
+    xlSheet.Range(strRows).EntireRow.Delete
+End Sub
+
+'Sub XLInsertColumns(strCol1 As String, strCol2 As String, xlSheet As Excel.Worksheet)
+'    Dim strColumns As String
+'    strColumns = strCol1 & ":" & strCol2
+'    xlSheet.Range(strColumns).EntireColumn.Insert
+'End Sub
+
+Sub XLInsertColumns(xlSheet As Excel.Worksheet, lCol1 As Long, Optional lCol2 As Long = 0)
+    Dim strColumns As String
+    
+    If lCol2 = 0 Then lCol2 = lCol1
+    strColumns = XLCellAddress(lCol1, 1) & ":" & XLCellAddress(lCol2, 1)
+    xlSheet.Range(strColumns).EntireColumn.Insert
+    'xlSheet.Range(strColumns).EntireColumn.Insert
+End Sub
+Sub XLInsertRows(iRow1 As Integer, iRow2 As Integer, xlSheet As Excel.Worksheet)
+    Dim strRows As String
+    strRows = Trim(Str(iRow1)) & ":" & Trim(Str(iRow2))
+    xlSheet.Range(strRows).EntireRow.Insert
+End Sub
+
+Sub XLInitializeObjects(ByRef xlApp As Excel.Application, ByRef xlBook As Excel.Workbook, ByRef xlSheet As Excel.Worksheet)
+    On Error Resume Next
+    Dim NotOpen As Boolean
+    
+    Set xlApp = GetObject(, "Excel.Application")
+    If Err.Number = 429 Then
+        NotOpen = True
+        Set xlApp = New Excel.Application
+    End If
+    
+    Set xlBook = GetObject(, "Excel.Workbook")
+    If Err.Number = 429 Then
+        NotOpen = True
+        Set xlBook = xlApp.Workbooks.Add
+    End If
+    
+    Set xlSheet = GetObject(, "Excel.Worksheet")
+    If Err.Number = 429 Then
+        NotOpen = True
+        Set xlSheet = xlBook.Worksheets(1)
+    End If
+         
+    xlApp.Visible = True
+         
+
+End Sub
+
+Function IsXLBookOpen(strName As String) As Boolean
+     
+     'Function designed to test if a specific Excel
+     'workbook is open or not.
+     
+    Dim i As Long, XLAppFx As Excel.Application, NotOpen As Boolean
+     
+    'Find/create an Excel instance
+    On Error Resume Next
+    Set XLAppFx = GetObject(, "Excel.Application")
+    If Err.Number = 429 Then
+        NotOpen = True
+        Set XLAppFx = CreateObject("Excel.Application")
+        Err.Clear
+    End If
+     
+    'Loop through all open workbooks in such instance
+    For i = XLAppFx.Workbooks.Count To 1 Step -1
+        If XLAppFx.Workbooks(i).Name = strName Then Exit For
+    Next i
+     
+     'Set all to False
+    IsXLBookOpen = False
+     
+     'Perform check to see if name was found
+    If i <> 0 Then IsXLBookOpen = True
+     
+     'Close if was closed
+    If NotOpen Then XLAppFx.Quit
+     
+     'Release the instance
+    Set XLAppFx = Nothing
+     
+End Function
+
+Sub XLClearCellContents(strRange As String, xlSheet As Excel.Worksheet)
+    xlSheet.Range(strRange).ClearContents
+End Sub
+
+Public Function XLColNumToLetters(ColNum As Long) As String
+'On Error GoTo HandleError
+    Const d = 26
+    Dim X As Integer, Y As Integer
+    
+    X = Int(ColNum / d)
+    Y = ColNum - (X * d)
+    
+    Select Case ColNum
+        Case 1 To 26
+            XLColNumToLetters = Chr(ColNum + 64)
+        Case 27 To 256
+            If Y = 0 Then 'ColNum is multiple of 26
+                XLColNumToLetters = Chr((X - 1) + 64) & Chr(d + 64)
+            Else
+                XLColNumToLetters = Chr(X + 64) & Chr(Y + 64)
+            End If
+        Case Else
+            XLColNumToLetters = "" 'Excel has a maximum of 256 columns
+    End Select
+    Exit Function
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "GlobalSubs", "XLColNumToLetters"
+End Function
+
+Public Function XLColLettersToNum(strColumn As String) As Integer
+    Dim i As Integer, iResult As Integer
+    
+    strColumn = UCase(strColumn)
+    
+    iResult = 0
+    Select Case Len(strColumn)
+        Case 1
+            iResult = Asc(Left(strColumn, 1)) - 64
+        Case 2
+            iResult = Asc(Mid(strColumn, 2, 1)) - 64
+            iResult = iResult + (Asc(Mid(strColumn, 1, 1)) - 64) * 26
+        Case Else
+            iResult = 0
+    End Select
+    
+    XLColLettersToNum = iResult
+End Function
+
+'6/20/2008 2:52 PM
+
+Function xlFindColumn(strSearch As String, strRange As String, xlSheet As Worksheet) As Integer
+'
+' FindColumn Macro
+' Macro recorded 4/22/2008 by Michael A. Moore
+    'FindColumn = xlSheet.Cells.Find(What:=strSearch, LookIn:=xlValues, LookAt:=xlPart, SearchOrder:=xlByRows, SearchDirection:=xlNext, MatchCase:=False, SearchFormat:=False).Column
+    
+    xlSheet.Range(strRange).Cells.Find strSearch
+    xlSheet.Cells.Find(What:=strSearch, after:=ActiveCell, LookIn:=xlValues, _
+        LookAt:=xlPart, SearchOrder:=xlByRows, SearchDirection:=xlNext, _
+        MatchCase:=False, SearchFormat:=False).Activate
+    xlFindColumn = ActiveCell.Column
+End Function
+Function xlFindRow(X As String, xlSheet As Worksheet) As Integer
+'
+' FindRow Macro
+    xlSheet.Range("A1").Select
+    Cells.Find(What:=X, after:=ActiveCell, LookIn:=xlValues, _
+        LookAt:=xlPart, SearchOrder:=xlByRows, SearchDirection:=xlNext, _
+        MatchCase:=False, SearchFormat:=False).Activate
+    xlFindRow = ActiveCell.Row
+End Function
+
+'Sub xlFormatCellsFont(xlSheet As Excel.Worksheet, strRange As String, Optional strFontName As String, Optional strFontStyle As String, Optional iFontSize As Integer, Optional bStrikeThrough As Boolean, Optional bStrikeThrough As Boolean, Optional bSuperScript As Boolean, Optional bSubScript As Boolean, Optional bOutlineFont As Boolean, Optional bShadow As Boolean, Optional iUnderlineStyle As Integer, Optional iColorIndex As Integer)
+'
+'    xlSheet.Range(strRange).Select
+'
+'    With Selection.Font
+'        .Name = strFontName
+'        .FontStyle = strFontStyle
+'        .Size = iFontSize
+'        .Strikethrough = bStrikeThrough
+'        .Superscript = bSuperScript
+'        .Subscript = bSubScript
+'        .OutlineFont = bOutlineFont
+'        .Shadow = bShadow
+'        .Underline = iUnderlineStyle
+'        .ColorIndex = iColorIndex
+'    End With
+'End Sub
+
+'Sub XLSubTotalSheet(xlSheet As Excel.Worksheet, strCell1 As String, lGroupBy As Long, lFunction As Long, vColumns As Variant, Optional bReplace As Boolean = True, Optional bPageBreaks As Boolean = False, Optional lSummaryRow As Long = xlSummaryBelow)
+'    'lSummaryRow can be either xlSummaryAbove or xlSummaryBelow
+'
+'    xlSheet.Range(strCell1).SubTotal lGroupBy, lFunction, vColumns, bReplace, bPageBreaks, lSummaryRow
+'End Sub
+
+Function XLInsertQuery(strQuery As String, xlSheet As Excel.Worksheet, strStartCell As String, Optional bProtectSheet As Boolean = False) As Variant
+    Dim acQuery As QueryDef, objRST As Recordset
+    Dim strQueryName As String, strSheetName As String
+    Dim lngCols As Long, strPath As String, lngFieldCount As Long, lngCol As Long, lngRow As Long, lngRecCount As Long
+    Dim vResult(2)
+    
+    strPath = WhereAmI 'Find out where this database is and set strPath to its location
+    
+    strQueryName = strQuery 'Set the name of the query to use.
+    strSheetName = Trim(Left(strQueryName, 31))
+    Set objRST = Application.CurrentDb.OpenRecordset(strQueryName, dbOpenDynaset, dbSeeChanges)
+    lngFieldCount = objRST.Fields.Count 'Get the number of fields
+    
+    objRST.MoveLast
+    lngRecCount = objRST.RecordCount
+    objRST.MoveFirst
+    
+    vResult(1) = objRST.RecordCount
+    vResult(2) = objRST.Fields.Count
+    
+    If vResult(1) > 0 Then 'There were some actual records... proceed
+        xlSheet.Unprotect 'Unprotect the sheet
+        
+        lngCol = xlSheet.Range(strStartCell).Column 'Get the column of the starting cell
+        lngRow = xlSheet.Range(strStartCell).Row 'Get the row of the starting cell
+        
+        'Insert Column Headings
+        For lngCols = 0 To lngFieldCount - 1
+            xlSheet.Cells(lngRow, lngCol + lngCols).Value = objRST.Fields(lngCols).Name
+        Next
+    
+        With xlSheet
+            '.Range(xlSheet.Cells(lRow, lCol), xlSheet.Cells(lRow, lCol + iFieldCount)).Font.Bold = True 'Bold the column headings
+            .Range(XLCellAddress(CLng(lngCol), lngRow + 1)).CopyFromRecordset objRST 'Get the values from the recordset
+            '.Name = strSheetName
+            If bProtectSheet Then .Protect DrawingObjects:=True, Contents:=True, Scenarios:=True 're-protect the sheet
+        End With
+    End If
+    
+    XLInsertQuery = vResult
+    
+    'xlWorkbook.Save
+    'xlApp.Quit
+    
+    'We're done now. Reset the objects and call it a day.
+    Set objRST = Nothing
+    'Set xlSheet = Nothing
+    'Set xlWorkbook = Nothing
+    'Set xlApp = Nothing
+End Function
+
+Function XLCellAddress(lCol As Long, lRow As Long, Optional iAbsolute As Integer = 0) As String
+    Dim strCol As String, strRow As String
+    'iAbsolute
+        '0 - Relative  A1 (Default)
+        '1 - Absolute Column $A1
+        '2 - Absolute Row A$1
+        '3 - Absolute Column and Row $A$1
+    Select Case iAbsolute
+        Case 0
+            'Row and Column Relative
+            strCol = XLColNumToLetters(lCol)
+            strRow = Trim(Str(lRow))
+        Case 1
+            'Row Relative, Column Absolute $A1
+            strCol = "$" & XLColNumToLetters(lCol)
+            strRow = Trim(Str(lRow))
+        Case 2
+            'Row Absolute, Column Relative A$1
+            strCol = XLColNumToLetters(lCol)
+            strRow = "$" & Trim(Str(lRow))
+        Case 3
+            'Row and Column Absolute $A$1
+            strCol = "$" & XLColNumToLetters(lCol)
+            strRow = "$" & Trim(Str(lRow))
+    End Select
+    'Given the column and row as integers, return the cell address as a string
+    XLCellAddress = strCol & strRow
+End Function
+
+Function XLInchesToPoints(dInches As Double) As Long
+    'Dim xlApp As Excel.Application
+    
+    'Set xlApp = New Excel.Application
+    'XLInchesToPoints = xlApp.InchesToPoints(dInches)
+    'Set xlApp = Nothing
+    XLInchesToPoints = dInches * 72
+End Function
+
+Function XLPointsToInches(lPoints As Long) As Double
+    XLPointsToInches = lPoints / 72
+End Function
+
+'Sub xlClearZeroCells(xlSheet As Excel.Worksheet, strRange As String)
+'
+'    For Each cell In xlSheet.Range(strRange)
+'        If cell.Value = 0 Then
+'            cell.ClearContents
+'        End If
+'    Next cell
+'End Sub
+Function XLLastRowCol(xlSheet As Excel.Worksheet, strCell1 As String) As Integer
+    'Return the row of the last cell in a column containing a certain cell
+    Dim iRow As Integer, iCol As Integer, strCell2 As String
+    
+    iRow = xlSheet.Range(strCell1).End(xlDown).Row
+    'xlSheet.Range(strCell1).Select
+    'xlApp.Selection.End(xlDown).Select
+    'iRow = xlApp.ActiveCell.Row 'Find the last row
+        
+    XLLastRowCol = iRow
+End Function
+
+Function xlLastUsedRowCol(xlSheet As Excel.Worksheet, lngCol As Long) As Long
+    Dim lngRow As Long
+    
+    lngRow = xlSheet.Range(xlRange(lngCol, 65536)).End(xlUp).Row
+    xlLastUsedRowCol = lngRow
+End Function
+Function XLLastColRow(xlSheet As Excel.Worksheet, strCell1 As String) As Integer
+    'Return the column of the last cell in a row containing a certain cell
+    Dim iRow As Integer, iCol As Integer, strCell2 As String
+    
+    iCol = xlSheet.Range(strCell1).End(xlToRight).Column
+    'xlSheet.Range(strCell1).Select
+    'xlApp.Selection.End(xlToRight).Select
+    'iCol = xlApp.ActiveCell.Column 'Find the last column
+
+    XLLastColRow = iCol
+End Function
+
+Sub xlCopyChartObject(xlSheet As Excel.Worksheet, xlSourceSheet As Excel.Worksheet, Optional strCell As String = "A1", Optional iChart As Integer = 1)
+    Dim xlChart As Excel.ChartObject
+    
+    'Set xlSourceSheet = xlBook.Worksheets("Termination")
+    Set xlChart = xlSourceSheet.ChartObjects(iChart)
+    xlChart.Copy
+    xlSheet.Range(strCell).Activate
+    xlSheet.Paste
+    
+    Set xlChart = Nothing
+End Sub
+
+Sub xlClearChart(xlChart As Excel.Chart)
+    Dim N As Integer, i As Integer
+    
+    N = xlChart.SeriesCollection.Count
+    
+    For i = i To N - 1
+        With xlChart
+            .Legend.LegendEntries(1).Delete
+            .SeriesCollection(1).Delete
+        End With
+    Next i
+End Sub
+
+Sub XLMoveColumn(xlSheet As Excel.Worksheet, lSourceCol As Long, lDestCol As Long)
+    
+    With xlSheet
+        .Columns(lSourceCol).Cut
+        .Columns(lDestCol).Insert Shift:=xlToRight
+    End With
+End Sub
+Sub XLMoverow(xlSheet As Excel.Worksheet, lSourceRow As Long, lDestRow As Long)
+    With xlSheet
+        .Rows(lSourceRow).Cut
+        .Rows(lDestRow).Insert Shift:=xlDown
+    End With
+End Sub
+
+Sub xlBlanksToZero(xlSheet As Excel.Worksheet, strRange As String)
+    xlSheet.Range(strRange).Replace "", 0
+End Sub
+Sub xlBlanksToValue(xlSheet As Excel.Worksheet, strRange As String, Optional varValue As Variant = 0)
+    xlSheet.Range(strRange).Replace "", varValue
+End Sub
+Sub xlBlanksToFormula(xlSheet As Excel.Worksheet, strRange As String)
+    xlSheet.Range(strRange).Replace "", 0
+End Sub
+
+Sub DeleteEmptyRows(DeleteRange As Range)
+'http://www.exceltip.com/st/Delete_rows_and_columns_using_VBA_in_Microsoft_Excel/482.html
+' Deletes all empty rows in DeleteRange
+' Example: DeleteEmptyRows Selection
+' Example: DeleteEmptyRows Range("A1:D100")
+Dim rCount As Long, r As Long
+    If DeleteRange Is Nothing Then Exit Sub
+    If DeleteRange.Areas.Count > 1 Then Exit Sub
+    With DeleteRange
+        rCount = .Rows.Count
+        For r = rCount To 1 Step -1
+            If Excel.Application.CountA(.Rows(r)) = 0 Then
+                .Rows(r).EntireRow.Delete
+            End If
+        Next r
+    End With
+End Sub
+
+
+'Sub DeleteEmptyColumns(DeleteRange As Range)
+''http://www.exceltip.com/st/Delete_rows_and_columns_using_VBA_in_Microsoft_Excel/482.html
+'' Deletes all empty columns in DeleteRange
+'' Example: DeleteEmptyColumns Selection
+'' Example: DeleteEmptyColumns Range("A1:Z1")
+'Dim cCount As Integer, c As Integer
+'    If DeleteRange Is Nothing Then Exit Sub
+'    If DeleteRange.Areas.Count > 1 Then Exit Sub
+'    With DeleteRange
+'        cCount = .Columns.Count
+'        For c = cCount To 1 Step -1
+'            If Application.CountA(.Columns(c)) = 0 Then
+'                .Columns(c).EntireColumn.Delete
+'            End If
+'        Next c
+'    End With
+'End Sub
+
+
+Sub DeleteEveryNthRow(DeleteRange As Range, N As Integer)
+'http://www.exceltip.com/st/Delete_rows_and_columns_using_VBA_in_Microsoft_Excel/482.html
+' Deletes every n-th row in DeleteRange
+' Example: DeleteEveryNthRow Selection,2
+' Example: DeleteEveryNthRow Range("A1:D100"),4
+Dim rCount As Long, r As Long
+    If DeleteRange Is Nothing Then Exit Sub
+    If DeleteRange.Areas.Count > 1 Then Exit Sub
+    If N < 2 Then Exit Sub
+    With DeleteRange
+        rCount = .Rows.Count
+        For r = N To rCount Step N - 1
+            .Rows(r).EntireRow.Delete
+        Next r
+    End With
+End Sub
+
+
+Sub DeleteEveryNthColumn(DeleteRange As Range, N As Integer)
+'http://www.exceltip.com/st/Delete_rows_and_columns_using_VBA_in_Microsoft_Excel/482.html
+' Deletes every n-th column in DeleteRange
+' Example: DeleteEveryNthColumn Selection,2
+' Example: DeleteEveryNthColumn Range("A1:D100"),4
+Dim cCount As Long, c As Long
+    If DeleteRange Is Nothing Then Exit Sub
+    If DeleteRange.Areas.Count > 1 Then Exit Sub
+    If N < 2 Then Exit Sub
+    With DeleteRange
+        cCount = .Columns.Count
+        For c = N To cCount Step N - 1
+            .Columns(c).EntireColumn.Delete
+        Next c
+    End With
+End Sub
+
+Function xlRange(lCol1 As Long, lRow1 As Long, Optional lCol2 As Long = 0, Optional lRow2 As Long = 0) As String
+    If lCol2 = 0 Or lRow2 = 0 Then
+        xlRange = XLCellAddress(lCol1, lRow1)
+    Else
+        xlRange = XLCellAddress(lCol1, lRow1) & ":" & XLCellAddress(lCol2, lRow2)
+    End If
+End Function
+
+Sub XLBorders(xlSheet As Excel.Worksheet, lCol1 As Long, lRow1 As Long, lCol2 As Long, lRow2 As Long)
+
+End Sub
+
+Public Function XLFindRowByValue(ws As Worksheet, _
+        lngStartRow As Long, lngCol As Long, strValue As String) As Long
+
+    Dim i As Long
+    
+    ' given a starting row and column, find a cell in that column that matches the given string and return that row number
+    XLFindRowByValue = lngStartRow
+    With ws
+        For i = lngStartRow To .Rows.Count  ' loop up to last row
+            ' check for value in current row
+            If .Cells(XLFindRowByValue, lngCol) = strValue Then Exit Function
+            ' not found, increment row number for next time through
+            XLFindRowByValue = XLFindRowByValue + 1
+        Next i
+    End With
+
+FindValueError:
+    XLFindRowByValue = 0   ' return of zero indicates not found
+    Exit Function
+
+End Function
+
+Public Function XLFindColumnByValue(ws As Worksheet, _
+        lngRow As Long, lngStartCol As Long, strValue As String) As Long
+'On Error GoTo HandleError
+
+    Dim i As Long
+    
+    ' given a starting row and column, find a cell in that row that matches the given string and return that column number
+    XLFindColumnByValue = lngStartCol
+    With ws
+        For i = lngStartCol To .Columns.Count  ' loop up to last column
+            ' check for value in current column
+            If .Cells(lngRow, XLFindColumnByValue) = strValue Then Exit Function
+            ' not found, increment column number for next time through
+            XLFindColumnByValue = XLFindColumnByValue + 1
+        Next i
+    End With
+
+FindValueError:
+    XLFindColumnByValue = 0   ' return of zero indicates not found
+    Exit Function
+
+HandleError:
+    'GeneralErrorHandler Err.Number, Err.Description, "GlobalSubs", "FindColumnByValue"
+End Function
+
+'Sub SubTotal(xlSheet As Excel.Worksheet, strRange As String, varColumns As Variant)
+'    Dim lngLower As Long, lngUpper As Long, I As Long, j As Long, intTotalColumns As Integer
+'
+'    lngLower = LBound(varColumns)
+'    lngUpper = UBound(varColumns)
+'    intTotalColumns = lngUpper - lngLower + 1
+'
+'    Dim lngTotals(intTotalColumns, 2)
+'
+'    For I = lngLower To lngUpper
+'
+'
+'
+'
+'
+'
+'
+'
+'End Sub
+Public Sub DeleteRowOnColumn(xlSheet As Excel.Worksheet, lngCol As Long)
+    'On Error Resume Next
+    xlSheet.Activate
+    xlSheet.Columns(XLColNumToLetters(lngCol)).SpecialCells(xlCellTypeBlanks).EntireRow.Delete
+    'xlSheet.Columns(iCol).SpecialCells(xlCellTypeBlanks).EntireRow.Delete
+    'Selection.SpecialCells(xlCellTypeBlanks).EntireRow.Delete
+    'ActiveSheet.UsedRange
+End Sub
+
+Function TopPositionPoints(xlSheet As Excel.Worksheet, lngRow As Long) As Long
+    Dim strRange As String
+    
+    strRange = xlRange(1, 1, 1, lngRow)
+    TopPositionPoints = xlSheet.Range(strRange).Height
+End Function
+Function LeftPositionPoints(xlSheet As Excel.Worksheet, lngCol As Long) As Long
+    Dim strRange As String
+    
+    strRange = xlRange(1, 1, lngCol, 1)
+    LeftPositionPoints = xlSheet.Range(strRange).Width
+End Function
+
+Function LastCell(ws As Worksheet) As Range
+    'http://www.beyondtechnology.com/geeks012.shtml
+    Dim LastRow&, LastCol%
+    
+    ' Error-handling is here in case there is not any
+    ' data in the worksheet
+ 
+    On Error Resume Next
+ 
+    With ws
+        ' Find the last real row
+        LastRow& = .Cells.Find(What:="*", SearchDirection:=xlPrevious, SearchOrder:=xlByRows).Row
+        
+        ' Find the last real column
+        LastCol% = .Cells.Find(What:="*", SearchDirection:=xlPrevious, SearchOrder:=xlByColumns).Column
+    End With
+
+    ' Finally, initialize a Range object variable for
+    ' the last populated row.
+ 
+    Set LastCell = ws.Cells(LastRow&, LastCol%)
+End Function
+
+Sub ExportToExcel(strRecordset As String, Optional strRecordsetName As String = "", Optional strSaveAs As String = "")
+    Dim xlApp As Excel.Application, xlBook As Excel.Workbook, xlSheet As Excel.Worksheet
+    Dim lngRow As Long, lngCol As Long, lngRow1 As Long, lngCol1 As Long, lngRow2 As Long, lngCol2 As Long
+    Dim lngLastRow As Long, lngLastCol As Long, lngFirstRow As Long, lngFirstCol As Long
+    Dim strSheetName As String
+    
+    Set xlApp = New Excel.Application
+    Set xlBook = xlApp.Workbooks.Add
+    Set xlSheet = xlBook.Worksheets.Add
+    
+    xlApp.Visible = True
+    
+    XLInsertQuery strRecordset, xlSheet, "A3"
+    
+    lngFirstRow = 3
+    lngFirstCol = 1
+    
+    With xlSheet
+        lngLastRow = LastCell(xlSheet).Row
+        lngLastCol = LastCell(xlSheet).Column
+
+        .Cells(lngFirstRow + 1, lngFirstCol).Activate
+        xlApp.ActiveWindow.FreezePanes = True
+        
+        With .Range(.Cells(lngFirstRow, 1), .Cells(lngLastRow, lngLastCol)) 'Format Entire Table
+            .WrapText = False
+            .AutoFilter
+        End With
+        
+        With .Range(.Cells(lngFirstRow, 1), .Cells(lngFirstRow, lngLastCol)) 'Format First Row
+            .WrapText = True
+            .Font.Bold = True
+            .EntireColumn.AutoFit
+            .Interior.Color = RGB(169, 169, 169)
+        End With
+        
+        If strRecordsetName <> "" Then
+            'Set the sheet name
+            strSheetName = strRecordsetName
+            .Name = strSheetName
+            
+            'Set the title
+            With .Cells(1, 1)
+                .Value = strSheetName
+                .Font.Size = 18
+            End With
+        End If
+    End With
+    
+    If strSaveAs <> "" Then
+        xlApp.DisplayAlerts = False
+        xlBook.SaveAs strSaveAs
+        xlApp.DisplayAlerts = True
+    End If
+    
+    Set xlSheet = Nothing
+    Set xlBook = Nothing
+    Set xlApp = Nothing
+
+End Sub
+
