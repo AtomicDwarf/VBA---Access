@@ -1,0 +1,125 @@
+Option Compare Database
+Option Explicit
+
+Sub SendEmail(Optional strSubject As String = "", Optional strBody As String = "", Optional blnSendNow As Boolean = False, Optional strAttachmentPath As String = "")
+    Dim outApp As Outlook.Application, outMail As Outlook.MailItem, outRecipient As Outlook.Recipient
+    Dim rstEmailRecipients As Recordset
+    
+    Set outApp = New Outlook.Application
+    Set outMail = outApp.CreateItem(olMailItem)
+    'Set outRecipient = outMail.Recipients.Add("michael.a.moore@att.net")
+
+
+    If strSubject <> "" Then
+        outMail.Subject = strSubject
+    End If
+    
+    If strBody <> "" Then
+        outMail.Body = strBody
+    End If
+    
+'    Set rstEmailRecipients = CurrentDb.OpenRecordset("qryEmailRecipients-Included")
+    
+'    While Not rstEmailRecipients.EOF
+'        Set outRecipient = outMail.Recipients.Add(rstEmailRecipients!EmailRecipient)
+'        rstEmailRecipients.MoveNext
+'    Wend
+'
+'    rstEmailRecipients.Close
+'    Set rstEmailRecipients = Nothing
+'
+    If strAttachmentPath <> "" Then
+        outMail.Attachments.Add strAttachmentPath
+    End If
+
+    If blnSendNow Then
+        outMail.Send
+    Else
+        outMail.Display
+    End If
+End Sub
+
+Sub TestOutlook()
+    Dim outApp As Outlook.Application, outMail As Outlook.MailItem, outContact As Outlook.ContactItem
+    
+    Set outApp = New Outlook.Application
+    Set outContact = outApp.CreateItem(olContactItem)
+    
+    
+    outContact.LastName = "Kent"
+    outContact.FirstName = "Clark"
+    outContact.Save
+    
+    Set outContact = Nothing
+    Set outMail = Nothing
+    Set outApp = Nothing
+    
+End Sub
+
+Sub SendNewCBRUserEmail(strSubject As String, strBody As String, Optional blnSendNow As Boolean = False, Optional strAttachmentPath As String = "")
+    Dim outApp As Outlook.Application, outMail As Outlook.MailItem, outRecipient As Outlook.Recipient
+    Dim rstEmailRecipients As Recordset
+    
+    Set outApp = New Outlook.Application
+    Set outMail = outApp.CreateItem(olMailItem)
+    'Set outRecipient = outMail.Recipients.Add("michael.a.moore@att.net")
+
+
+    If strSubject <> "" Then
+        outMail.Subject = strSubject
+    End If
+    
+    If strBody <> "" Then
+        outMail.Body = strBody
+    End If
+    
+'    Set rstEmailRecipients = CurrentDb.OpenRecordset("qryEmailRecipients-Included")
+'
+'    While Not rstEmailRecipients.EOF
+'        Set outRecipient = outMail.Recipients.Add(rstEmailRecipients!EmailRecipient)
+'        rstEmailRecipients.MoveNext
+'    Wend
+'
+'    rstEmailRecipients.Close
+'    Set rstEmailRecipients = Nothing
+    
+    If strAttachmentPath <> "" Then
+        outMail.Attachments.Add strAttachmentPath
+    End If
+    
+    If blnSendNow Then
+        outMail.Send
+    Else
+        outMail.Display
+    End If
+End Sub
+
+Sub SendOutlookEmail(Optional strRecipient As String = "", Optional strSubject As String = "", Optional strBody As String = "", Optional blnSendNow As Boolean = False, Optional strAttachmentPath As String = "")
+    Dim outApp As Outlook.Application, outMail As Outlook.MailItem, outRecipient As Outlook.Recipient
+    Dim rstEmailRecipients As Recordset
+    
+    Set outApp = New Outlook.Application
+    Set outMail = outApp.CreateItem(olMailItem)
+    
+    If strRecipient <> "" Then Set outRecipient = outMail.Recipients.Add(strRecipient)
+
+
+    If strSubject <> "" Then
+        outMail.Subject = strSubject
+    End If
+    
+    If strBody <> "" Then
+        outMail.Body = strBody
+    End If
+    
+    If strAttachmentPath <> "" Then
+        outMail.Attachments.Add strAttachmentPath
+    End If
+    
+    If blnSendNow Then
+        outMail.Send
+    Else
+        outMail.Display
+    End If
+End Sub
+
