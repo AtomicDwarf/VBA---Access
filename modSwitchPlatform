@@ -1,0 +1,317 @@
+Option Compare Database
+Option Explicit
+
+Function ShowTableAttribs()
+   Dim db As DAO.Database
+   Dim T As DAO.TableDef
+   Dim TType As String
+   Dim TName As String
+   Dim Attrib As String
+   Dim i As Integer
+
+   Set db = CurrentDb()
+
+   For i = 0 To db.TableDefs.Count - 1
+      Set T = db.TableDefs(i)
+      TName = T.Name
+      Attrib = (T.Attributes And dbSystemObject)
+      MsgBox TName & IIf(Attrib, ": System Table", ": Not System" & _
+        "Table")
+   Next i
+
+End Function
+
+'Function LoadTables()
+'
+'Dim tempDatabase As Database
+'Dim tempTableDef As TableDef
+'
+'' Set a reference to the current database
+'Set tempDatabase = CurrentDb
+'
+'DoCmd.SetWarnings False
+'DoCmd.RunSQL "delete * from UsystblTableInventory where DatabaseName='" & FCurrentDB & "';"
+'
+'For Each tempTableDef In tempDatabase.TableDefs
+'
+'    DoCmd.RunSQL "INSERT INTO UsystblTableInventory (DatabaseName, TableName, TableConnection) " _
+'                & "SELECT '" & FCurrentDB & "', '" & tempTableDef.Name & "', '" & tempTableDef.Connect & "';"
+'
+'    'Debug.Print tempTableDef.Name & " | " & tempTableDef.Connect
+'Next
+'
+'DoCmd.RunSQL "delete * from UsystblTableInventory where ((left(TableConnection,5) not in('MS Ac', ';DATA')) and (databasename='" & FCurrentDB & "'));"
+'
+'DoCmd.SetWarnings True
+'
+'Set tempDatabase = Nothing
+'
+'End Function
+
+'Function ChangeConnectionLocation(strOldLocation As String, strNewLocation As String)
+'
+'Dim tempDatabase As Database
+'Dim tempTableDef As TableDef
+'Dim i As Integer
+'Dim strDBConnection As String
+'Dim strTable As String
+'Dim strFilePath As String
+'' Set a reference to the current database
+'Set tempDatabase = CurrentDb
+'
+'If GetLinkedDBCt > 0 Then
+'
+'    Dim ADOCon As New ADODB.Connection
+'    Dim ADORst As New ADODB.Recordset
+'    Dim sql As String
+'    ' Use active Access connection.
+'    Set ADOCon = CurrentProject.Connection
+'
+'    'sql = "SELECT * FROM tblTableInventory WHERE (((Len([TableConnection]))>0));"
+'    sql = "SELECT * FROM UsystblTableInventory WHERE (((Len([TableConnection]))>0) and (tablename<>'UsystblTableInventory') and (databasename='" & FCurrentDB & "'));"
+'    i = 0
+'
+'    ADORst.Open sql, ADOCon, adOpenStatic, adLockReadOnly, adCmdText
+'
+'
+'
+'    Do While ADORst.EOF = False
+'
+'        strDBConnection = ADORst!TableConnection
+'        strDBConnection = Replace(strDBConnection, strOldLocation, strNewLocation, 1, , vbTextCompare)
+'        strTable = ADORst!TableName
+'
+'            For Each tempTableDef In tempDatabase.TableDefs
+'                'Check for a linked table
+'                If (tempTableDef.Attributes And DB_ATTACHEDTABLE) Then
+'
+'                    If tempTableDef.Name = strTable Then
+'                        Set tempTableDef = tempDatabase.TableDefs(tempTableDef.Name)
+'                        tempTableDef.Connect = strDBConnection
+'                        tempTableDef.RefreshLink
+'
+'                    End If
+'                End If
+'            Next
+'
+'        ADORst.MoveNext
+'    Loop
+'
+'End If
+'
+'ADOCon.Close
+'
+'Set ADORst = Nothing
+'Set ADOCon = Nothing
+'Set tempDatabase = Nothing
+'Set tempTableDef = Nothing
+'
+'End Function
+
+'Function GetLinkedDBCt() As Long
+'
+'Dim ADOCon As New ADODB.Connection
+'Dim ADORst As New ADODB.Recordset
+'Dim sql As String
+'' Use active Access connection.
+'Set ADOCon = CurrentProject.Connection
+'
+'sql = "select count(*) from (SELECT TableConnection FROM UsystblTableInventory " _
+'    & "WHERE (((Len([TableConnection])) > 0) and (databasename='" & FCurrentDB & "')) " _
+'    & "GROUP BY TableConnection);"
+'
+'
+'ADORst.Open sql, ADOCon, adOpenStatic, _
+'adLockReadOnly, adCmdText
+'GetLinkedDBCt = ADORst(0)
+'
+'ADOCon.Close
+'
+'Set ADORst = Nothing
+'Set ADOCon = Nothing
+'
+'End Function
+
+Function GetLinkedFilePath() As String
+
+Dim ADOCon As New ADODB.Connection
+Dim ADORst As New ADODB.Recordset
+Dim sql As String
+' Use active Access connection.
+Set ADOCon = CurrentProject.Connection
+
+'sql = "SELECT IIf(Len([database])>0,Left([database],InStrRev([Database],'\')),'') " _
+    & "AS FilePath FROM MSysObjects WHERE (((Len([Database])) > 0)) " _
+    & "GROUP BY IIf(Len([database])>0,Left([database],InStrRev([Database],'\')),'');"
+  
+sql = "SELECT IIf(Len([database])>0,Left([database],InStrRev([Database],'\')),'') " _
+    & "AS FilePath FROM MSysObjects WHERE (((Len([Database])) > 0) and ([foreignname]<>'UsystblTableInventory')) " _
+    & "GROUP BY IIf(Len([database])>0,Left([database],InStrRev([Database],'\')),'');"
+  
+
+ADORst.Open sql, ADOCon, adOpenStatic, _
+adLockReadOnly, adCmdText
+GetLinkedFilePath = ADORst(0)
+
+ADOCon.Close
+
+Set ADORst = Nothing
+Set ADOCon = Nothing
+
+End Function
+
+'Function ChangeConnectionLocationFromTable()
+'Dim strOldLocation As String, strNewLocation As String
+'Dim tempDatabase As Database
+'Dim tempTableDef As TableDef
+'Dim i As Integer
+'Dim strDBConnection As String
+'Dim strTable As String
+'Dim strFilePath As String
+'' Set a reference to the current database
+'Set tempDatabase = CurrentDb
+'
+'If GetLinkedDBCt > 0 Then
+'
+'    Dim ADOCon As New ADODB.Connection
+'    Dim ADORst As New ADODB.Recordset
+'    Dim sql As String
+'    ' Use active Access connection.
+'    Set ADOCon = CurrentProject.Connection
+'
+'    'sql = "SELECT * FROM tblTableInventory WHERE (((Len([TableConnection]))>0));"
+'    sql = "SELECT * FROM UsystblTableInventory WHERE (((Len([TableConnection]))>0) and (tablename<>'UsystblTableInventory') and (databasename='" & FCurrentDB & "'));"
+'    i = 0
+'
+'    ADORst.Open sql, ADOCon, adOpenStatic, adLockReadOnly, adCmdText
+'
+'
+'
+'    Do While ADORst.EOF = False
+'
+'        strDBConnection = ADORst!newTableConnection
+'        'strDBConnection = Replace(strDBConnection, strOldLocation, strNewLocation, 1, , vbTextCompare)
+'        strTable = ADORst!TableName
+'
+'            For Each tempTableDef In tempDatabase.TableDefs
+'                'Check for a linked table
+'                If (tempTableDef.Attributes And DB_ATTACHEDTABLE) Then
+'
+'                    If tempTableDef.Name = strTable Then
+'                        Set tempTableDef = tempDatabase.TableDefs(tempTableDef.Name)
+'                        tempTableDef.Connect = strDBConnection
+'                        tempTableDef.RefreshLink
+'
+'                    End If
+'                End If
+'            Next
+'
+'        ADORst.MoveNext
+'    Loop
+'
+'End If
+'
+'ADOCon.Close
+'
+'Set ADORst = Nothing
+'Set ADOCon = Nothing
+'Set tempDatabase = Nothing
+'Set tempTableDef = Nothing
+'
+'End Function
+
+' Link New Table
+Function LinkNewTable(strTableName As String, strTblConnection As String)
+Dim tdf As DAO.TableDef
+
+    Set tdf = CurrentDb.CreateTableDef(strTableName)
+    tdf.Connect = strTblConnection
+    tdf.SourceTableName = strTableName
+    CurrentDb.TableDefs.Append tdf
+    
+    CurrentDb.TableDefs.Refresh
+    Application.RefreshDatabaseWindow
+    
+
+End Function
+
+'***** Add 04/04/2018 - MAM
+
+Sub RelinkBackEndTables(Optional strCurrentBackendServerPath As String = "", Optional strNewServerPath As String = "")
+    Dim strServerPath As String
+    Dim tdf As DAO.TableDef
+    Dim intTableCount As Integer
+    'Dim strCurrentBackendServerPath As String
+    
+    
+    
+    If strCurrentBackendServerPath = "" Then
+        strCurrentBackendServerPath = UCase(GetCurrentBackendServerPath)
+    End If
+    
+    If strNewServerPath = "" Then
+        strServerPath = UCase(GetServerPath)
+    Else
+        strServerPath = UCase(strNewServerPath)
+    End If
+    
+    intTableCount = 0
+    For Each tdf In CurrentDb.TableDefs
+        If InStr(1, tdf.Connect, "\\") > 0 Then
+            tdf.Connect = Replace(tdf.Connect, strCurrentBackendServerPath, strServerPath)
+            tdf.RefreshLink
+            Debug.Print tdf.Name, tdf.Connect
+            intTableCount = intTableCount + 1
+        End If
+    Next
+    
+    If intTableCount = 0 Then
+        MsgBox "No tables relinked."
+    Else
+        MsgBox intTableCount & " tables linked."
+    End If
+End Sub
+
+Function GetCurrentBackendServerPath()
+    Dim strPath As String
+    Dim intPos1 As Integer, intPos2 As Integer
+    Dim strConnection As String
+    
+    If TableExists("zstblInventory") Then
+        strConnection = CurrentDb.TableDefs("zstblInventory").Connect
+        
+        intPos1 = InStr(1, strConnection, "\\")
+        intPos2 = InStr(intPos1 + 2, strConnection, "\")
+        
+        Debug.Print intPos1, intPos2
+        
+        GetCurrentBackendServerPath = Mid(strConnection, intPos1, (intPos2 - intPos1))
+    Else
+        If TableExists("tblActivityLog") Then
+            strConnection = CurrentDb.TableDefs("tblActivityLog").Connect
+            
+            intPos1 = InStr(1, strConnection, "\\")
+            intPos2 = InStr(intPos1 + 2, strConnection, "\")
+            
+            Debug.Print intPos1, intPos2
+            
+            GetCurrentBackendServerPath = Mid(strConnection, intPos1, (intPos2 - intPos1))
+        Else
+            GetCurrentBackendServerPath = ""
+        End If
+    End If
+    
+    
+End Function
+
+Function GetPathSansRoot(strFilePath As String) As String
+    Dim intPos1 As Integer, intPos2 As Integer
+    
+    If Left(strFilePath, 2) = "\\" Or Mid(strFilePath, 2, 1) = ":" Then
+            intPos1 = InStr(3, strFilePath, "\")
+            GetPathSansRoot = Mid(strFilePath, intPos1, Len(strFilePath))
+    Else
+        GetPathSansRoot = ""
+    End If
+
+End Function
