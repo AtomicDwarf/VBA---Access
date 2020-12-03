@@ -1,0 +1,10 @@
+Option Compare Database
+Option Explicit
+
+Public Function Preference(strPreferenceName As String) As String
+    Preference = DLookup("PreferenceValue", "tblPreferences", "PreferenceName='" & strPreferenceName & "'")
+End Function
+
+Public Function PreferenceLocal(strPreferenceName As String) As String
+    PreferenceLocal = DLookup("PreferenceValue", "tblPreferencesLocal", "PreferenceName='" & strPreferenceName & "'")
+End Function
