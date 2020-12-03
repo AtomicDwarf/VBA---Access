@@ -436,3 +436,93 @@ HandleError:
     FileNameFromFullPath = ""
 End Function
 
+'Added module 04/04/2018 - MAM
+Sub CreateQuery(strSQL As String, strQueryName As String)
+    Dim db As DAO.Database, rst As DAO.Recordset, qdef As DAO.QueryDef
+    
+    Set db = CurrentDb
+    
+    If QueryExists(strQueryName) Then
+        DoCmd.DeleteObject acQuery, strQueryName
+    End If
+    Set qdef = db.CreateQueryDef(strQueryName, strSQL)
+        
+End Sub
+
+Public Function TableExists(sTable As String) As Boolean
+  'Check to see if a particular table exists
+  Dim db As DAO.Database
+  Dim tbl As DAO.TableDef
+  Set db = CurrentDb()
+  
+  TableExists = False
+  
+  For Each tbl In db.TableDefs
+      If tbl.Name = sTable Then TableExists = True
+  Next tbl
+  
+End Function
+
+Function QueryExists(strQueryName As String) As Boolean
+  'Check to see if a given query exists in the database
+  Dim qry As QueryDef, Found As Boolean
+  
+  Found = False
+  For Each qry In CurrentDb.QueryDefs
+      If qry.Name = strQueryName Then Found = True
+  Next qry
+  
+  QueryExists = Found
+End Function
+
+'Sub LinkSpreadsheet(strFileName As String, strTableName As String, Optional strPath = "")
+'
+'    If strPath = "" Then strPath = WhereAmI
+'    If TableExists(strTableName) Then
+'        DoCmd.RunSQL "DROP TABLE " & strTableName & ";"
+'    End If
+'    DoCmd.TransferSpreadsheet acLink, acSpreadsheetTypeExcel12Xml, strTableName, strPath & strFileName, True
+'
+'End Sub
+
+Sub ClearTable(strTableName As String)
+    Dim strSQL As String
+    
+    'DELETE *
+    'FROM tblRemedyCreated;
+    
+    strSQL = "DELETE * "
+    strSQL = strSQL & "FROM " & strTableName & ";"
+    
+    DoCmd.SetWarnings False
+    DoCmd.RunSQL strSQL
+    DoCmd.SetWarnings True
+
+End Sub
+
+Function ShowNavigation(Optional blnShow As Boolean = True)
+    If blnShow Then
+        DoCmd.SelectObject acTable, , True
+    Else
+        DoCmd.RunCommand acCmdWindowHide
+    End If
+
+    ShowNavigation = blnShow
+End Function
+
+Sub GetQueries()
+    Dim rst As DAO.Recordset, qdf As DAO.QueryDef
+    
+    Set rst = CurrentDb.OpenRecordset("tblDBQueries")
+    
+    For Each qdf In CurrentDb.QueryDefs
+        rst.AddNew
+        rst!QueryName = qdf.Name
+        rst!sql = qdf.sql
+        rst.Update
+    Next qdf
+    
+    rst.Close
+    Set qdf = Nothing
+    Set rst = Nothing
+End Sub
