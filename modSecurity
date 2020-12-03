@@ -1,0 +1,665 @@
+Option Compare Database
+Option Explicit
+
+Sub TestIt()
+'    Dim db As dao.Database, strOptions As String
+'
+'    strOptions = "/WRKGRP " & Chr(34) & "\\Cbr\cbrfiles\Database\SecureAdmin.mdw" & Chr(34) & " /User moorema /Pwd Titans1964"
+'    'strOptions = "/WRKGRP " & "\\Cbr\cbrfiles\Database\SecureAdmin.mdw" & " /User moorema /Pwd Titans1964"
+'
+'    Set db = OpenDatabase("\\cbr\cbrfiles\Database\Admin_Database.mdb", , , strOptions)
+    
+    Dim MyWorkSpace As DAO.Workspace
+    Dim SecuredDB As String
+    Dim slUserName As String
+    Dim slPassword As String
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    
+    'Set the location of the system database
+    DBEngine.SystemDB = "\\Cbr\cbrfiles\Database\SecureAdmin.mdw"
+    
+    'Create a new workspace object
+    slUserName = InputBox("Enter your user name:", "Admin User Name")
+    slPassword = InputBox("Enter your password:", "Admin Password")
+    Set MyWorkSpace = DBEngine.CreateWorkspace("New", slUserName, slPassword)
+    
+    'Open the database
+    SecuredDB = "\\cbr\cbrfiles\Database\Admin_Database.mdb"
+    Set db = DBEngine.Workspaces("New").OpenDatabase(SecuredDB)
+    
+    Set rs = db.OpenRecordset("COMBINED", dbOpenDynaset)
+    rs.MoveFirst
+    
+    While Not rs.EOF
+        With rs
+            Debug.Print !XBRNO & " - " & !MallName
+        End With
+    Wend
+'    Label3.Caption = _
+'               "The first record is " & rs.Fields("LastName").Value
+'
+'    'Close the recordset and the database
+    rs.Close
+    db.Close
+    
+End Sub
+
+Sub List_Users(lngDatabaseID As Long, strDB As String, strSysDB As String, Optional strUserID As String = "", Optional strPassword As String = "")
+    'http://www.java2s.com/Code/VBA-Excel-Access-Word/Access/ListingAllUserAccounts.htm
+    
+    Dim db As DAO.Database, rst As DAO.Recordset
+    
+    Dim conn As ADODB.Connection
+    Dim cat As ADOX.Catalog
+    Dim myUser As New ADOX.User
+    'Dim strDB As String
+    'Dim strSysDB As String
+
+    'strDB = "\\cbr\cbrfiles\Database\Admin_Database.mdb"
+    'strSysDB = "\\Cbr\cbrfiles\Database\SecureAdmin.mdw"
+
+    Set db = CurrentDb
+    Set rst = db.OpenRecordset("tblDBUsers")
+    
+    If strUserID = "" Then strUserID = InputBox("Enter your user name:", "Admin User Name")
+    If strPassword = "" Then strPassword = InputBox("Enter your password:", "Admin Password")
+    
+    Set conn = New ADODB.Connection
+        With conn
+            .Provider = "Microsoft.Jet.OLEDB.4.0"
+            .Properties("Jet OLEDB:System Database") = strSysDB
+            .Properties("User ID") = strUserID
+            .Properties("Password") = strPassword
+            .Open strDB
+        End With
+
+    Set cat = New ADOX.Catalog
+    cat.ActiveConnection = conn
+    
+    For Each myUser In cat.Users
+        Debug.Print lngDatabaseID, myUser.Name
+        With rst
+            .AddNew
+            !DatabaseID = lngDatabaseID
+            !DBUser = myUser.Name
+            .Update
+        End With
+    Next
+    Set cat = Nothing
+    conn.Close
+    Set conn = Nothing
+End Sub
+
+Sub ListDBUsers(Optional strUserID As String = "", Optional strPassword As String = "")
+    Dim db As DAO.Database, rst As DAO.Recordset
+    Dim strDB As String, strSysDB As String, strDatabaseName As String, lngDatabaseID As Long
+    Dim strSQL As String
+    
+    DoCmd.RunSQL "DELETE * FROM tblDBUsers"
+    
+    strSQL = "SELECT * FROM tblDatabases WHERE [Include?]=True"
+    
+    Set db = CurrentDb
+    Set rst = CurrentDb.OpenRecordset(strSQL)
+    
+    If strUserID = "" Then strUserID = InputBox("Enter your user name:", "Admin User Name")
+    If strPassword = "" Then strPassword = InputBox("Enter your password:", "Admin Password")
+    
+    While Not rst.EOF
+        strDB = GetCurrentBackendServerPath & GetPathSansRoot(rst!DatabasePath) & rst!DatabaseFileName
+        strSysDB = GetCurrentBackendServerPath & GetPathSansRoot(rst!MDWFilePath) & rst!MDWFileName
+        strDatabaseName = rst!DatabaseName
+        lngDatabaseID = rst!DatabaseID
+        
+        Debug.Print strDatabaseName & vbCrLf
+        
+        List_Users lngDatabaseID, strDB, strSysDB, strUserID, strPassword
+        
+        rst.MoveNext
+    Wend
+        
+    Set rst = Nothing
+    Set db = Nothing
+        
+End Sub
+
+Sub List_Groups(lngDatabaseID As Long, strDB As String, strSysDB As String, Optional strUserID As String = "", Optional strPassword As String = "")
+    'http://www.java2s.com/Code/VBA-Excel-Access-Word/Access/ListingAllUserAccounts.htm
+    
+    Dim db As DAO.Database, rst As DAO.Recordset
+    
+    Dim conn As ADODB.Connection
+    Dim cat As ADOX.Catalog
+    Dim myUser As New ADOX.User, myGroup As New ADOX.Group
+    Dim i As Integer
+    
+    'Dim strDB As String
+    'Dim strSysDB As String
+
+    'strDB = "\\cbr\cbrfiles\Database\Admin_Database.mdb"
+    'strSysDB = "\\Cbr\cbrfiles\Database\SecureAdmin.mdw"
+
+    Set db = CurrentDb 'Set the database object to the current database
+    Set rst = db.OpenRecordset("tblDBGroups") 'Set the recordset to the table tblDBGroups
+    
+    If strUserID = "" Then strUserID = InputBox("Enter your user name: ", "User Name") 'Set the admin user name variable to either the passed user name or prompt for a user name
+    If strPassword = "" Then strPassword = InputBox("Enter your password: ", "Password") 'Set the admin password variable to either the passed password or prompt for a password
+    
+    Set conn = New ADODB.Connection 'set the connection object
+        With conn 'refer to the following attributes of the connection object
+            .Provider = "Microsoft.Jet.OLEDB.4.0" 'Set the provider
+            .Properties("Jet OLEDB:System Database") = strSysDB 'Set the database
+            .Properties("User ID") = strUserID 'Set the User ID
+            .Properties("Password") = strPassword 'Set the password
+            .Open strDB 'Open the connection
+        End With
+
+    Set cat = New ADOX.Catalog 'Set the Catalog object
+    cat.ActiveConnection = conn 'Open the catalog
+    
+    For Each myGroup In cat.Groups 'Loop through all of the groups in the catalog
+        'Debug.Print lngDatabaseID, myUser.Name
+        'AddDBGroups lngDatabaseID, myGroup.Name
+        With rst 'refer to the recordset (tblDBGroups)
+            .AddNew 'Add a new record
+            !DatabaseID = lngDatabaseID 'Set the DatabaseID field
+            !dbgroup = myGroup.Name 'Set the dbGroup field
+            'Debug.Print myGroup.Name 'Print the info in the immediate window (for debugging purposes)
+            For i = 0 To myGroup.Users.Count - 1 'Loop through the users of each group
+                'Debug.Print "   " & myGroup.Users(i)
+                AddDBUsersGroups lngDatabaseID, myGroup.Users(i), myGroup.Name 'run procedure to Add database, group, user
+                'Debug.Print lngDatabaseID, myGroup.Name, myGroup.Users(i)
+            Next i 'increment and loop
+            .Update 'Save the changes to the new record
+        End With
+    Next 'Loop to the next group
+    
+    Set cat = Nothing 'relese the variable
+    conn.Close 'close the connection
+    Set conn = Nothing 'release the variable
+End Sub
+
+Sub AddDBUsersGroups(lngDatabaseID As Long, strUser As String, strGroup As String)
+    Dim rst As DAO.Recordset
+    
+    Set rst = CurrentDb.OpenRecordset("tblDBUsersGroups") 'set the recordset object to the table "tblDBUsersGroups"
+    
+    With rst 'refer to the recordset (tblDBUsersGroups)
+        .AddNew 'Add a new record
+        !DatabaseID = lngDatabaseID 'populate the DatabaseID field
+        !DBUser = strUser 'populate the DBUser field
+        !dbgroup = strGroup 'populate the dbgroup field
+        .Update 'save the changes to the new record
+    End With
+        
+    rst.Close 'close the table
+    
+    Set rst = Nothing 'release the variable
+End Sub
+
+Sub AddDBGroups(lngDatabaseID As Long, strGroup As String)
+    Dim rst As DAO.Recordset
+    
+    Set rst = CurrentDb.OpenRecordset("tblDBGroups")
+    
+    With rst
+        .AddNew
+        !DatabaseID = lngDatabaseID
+        !dbgroup = strGroup
+        .Update
+    End With
+        
+    rst.Close
+    
+    Set rst = Nothing
+End Sub
+
+Sub ListAllDBUsersGroups(Optional strUserID As String = "", Optional strPassword As String = "")
+    Dim rstDatabases As DAO.Recordset
+    'Dim strDatabaseName As String, strDatabaseFileName As String, strDatabasePath As String, strMDWFileName As String, strMDWFilePath As Stream
+    
+    Set rstDatabases = CurrentDb.OpenRecordset("tblDatabases") 'set the recordset to the table "tblDatabases"
+    
+    If strUserID = "" Then strUserID = InputBox("Enter your User Name: ", "User Name") 'Set the admin user name variable to either the passed user name or prompt for a user name
+    If strPassword = "" Then strPassword = InputBox("Enter your password", "Password") 'Set the admin password variable to either the passed password or prompt for a password
+    
+    With rstDatabases 'refer to the recordset
+        While Not rstDatabases.EOF 'Loop through the recordset (list of databases)
+                If ![Include?] Then 'If the field "Include?" is true, then include this database. Otherwise, skip to the next one
+                    List_Groups !DatabaseID, GetCurrentBackendServerPath & GetPathSansRoot(!DatabasePath) & !DatabaseFileName, GetCurrentBackendServerPath & GetPathSansRoot(!MDWFilePath) & !MDWFileName, strUserID, strPassword  'Use the procedure "List_Groups" to
+                End If
+                .MoveNext 'Move to the next record (database)
+        Wend 'Loop
+        .Close 'Close the recordset
+    End With
+    
+    Set rstDatabases = Nothing 'release the recordset variable
+    
+    
+End Sub
+
+Sub AddUser(lngDatabaseID As Long, strDBUser As String, Optional strDBPassword As String = "", Optional strUserID As String = "", Optional strPassword As String = "")
+    Dim rstDatabases As DAO.Recordset
+    Dim strDatabase As String, strSysDatabase As String
+    
+    Dim conn As ADODB.Connection
+    Dim cat As ADOX.Catalog
+    Dim myUser As New ADOX.User, myGroup As New ADOX.Group
+    Dim i As Integer
+    
+    Set rstDatabases = CurrentDb.OpenRecordset("SELECT * FROM tblDatabases WHERE DatabaseID = " & lngDatabaseID)
+    
+    With rstDatabases
+        If Not .EOF Then 'There is a record
+            strDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!DatabasePath) & !DatabaseFileName
+            strSysDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!MDWFilePath) & !MDWFileName
+            
+            If strUserID = "" Then strUserID = InputBox("Enter your User Name:", "Admin User Name")
+            If strPassword = "" Then strPassword = InputBox("Enter your password:", "Admin Password")
+    
+            Set conn = New ADODB.Connection
+                With conn
+                    .Provider = "Microsoft.Jet.OLEDB.4.0"
+                    .Properties("Jet OLEDB:System Database") = strSysDatabase
+                    .Properties("User ID") = strUserID
+                    .Properties("Password") = strPassword
+                    .Open strDatabase
+                End With
+        
+            Set cat = New ADOX.Catalog
+            cat.ActiveConnection = conn
+            
+            If Not IsValidUser(lngDatabaseID, strDBUser, strUserID, strPassword) Then 'The user doesn't exist
+                conn.Execute "Create USER " & strDBUser & " " & strDBPassword
+            Else 'The user already exists
+                MsgBox "User already exists!", vbOKOnly, "User Exists"
+            End If
+            
+            'conn.Execute "ADD USER " & strDBUser & " to Admins"
+            
+        End If
+    End With
+            
+    conn.Close
+    Set conn = Nothing
+    
+    rstDatabases.Close
+    Set rstDatabases = Nothing
+    
+    
+End Sub
+
+Sub DropUser(lngDatabaseID As Long, strDBUser As String, Optional strUserID As String = "", Optional strPassword As String = "")
+    'http://stackoverflow.com/questions/1480306/can-i-add-a-user-to-access-with-vba-instead-of-using-the-builtin-user-and-group
+    'http://msdn.microsoft.com/en-us/library/bb267262.aspx
+    
+    Dim rstDatabases As DAO.Recordset
+    Dim strDatabase As String, strSysDatabase As String
+    
+    Dim conn As ADODB.Connection
+    Dim cat As ADOX.Catalog
+    Dim myUser As New ADOX.User, myGroup As New ADOX.Group
+    Dim i As Integer
+    
+    Set rstDatabases = CurrentDb.OpenRecordset("SELECT * FROM tblDatabases WHERE DatabaseID = " & lngDatabaseID)
+    
+    With rstDatabases
+        If Not .EOF Then 'There is a record
+'            strDatabase = !DatabasePath & !DatabaseFileName
+'            strSysDatabase = !MDWFilePath & !MDWFileName
+            strDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!DatabasePath) & !DatabaseFileName
+            strSysDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!MDWFilePath) & !MDWFileName
+            
+            If strUserID = "" Then strUserID = "moorema"
+            If strPassword = "" Then strPassword = "Titans1964"
+    
+            Set conn = New ADODB.Connection
+                With conn
+                    .Provider = "Microsoft.Jet.OLEDB.4.0"
+                    .Properties("Jet OLEDB:System Database") = strSysDatabase
+                    .Properties("User ID") = strUserID
+                    .Properties("Password") = strPassword
+                    .Open strDatabase
+                End With
+        
+            Set cat = New ADOX.Catalog
+            cat.ActiveConnection = conn
+            
+            If IsValidUser(lngDatabaseID, strDBUser, strUserID, strPassword) Then 'The user exists.
+                conn.Execute "DROP USER " & strDBUser
+            Else 'The user already exists!
+                MsgBox "The user does not exist!", vbOKOnly, "User Does Not Exist"
+            End If
+            
+        End If
+    End With
+            
+    conn.Close
+    Set conn = Nothing
+    
+    rstDatabases.Close
+    Set rstDatabases = Nothing
+    
+    
+End Sub
+
+Function CreatePassword(nLen As Long, Optional bNumeric As Boolean = True, Optional bUpper As Boolean = True, Optional bLower As Boolean = True, Optional bSymbol As Boolean = True) As String
+    'http://www.dbforums.com/microsoft-access/1606816-vba-password-generator.html
+    
+    Dim i As Long
+    Dim nRnd As Double
+    Dim sPW As String
+    Dim bAdd As Boolean
+    
+    Dim strTemp As String
+
+    Randomize
+
+    While Len(sPW) < nLen
+        
+        'nRnd = Int(Rnd * 75) + 48
+        nRnd = Int(Rnd * 90) + 32
+        bAdd = False
+        Select Case nRnd
+            Case 33 To 47    ' Symbols
+                bAdd = bSymbol
+            Case 48 To 57    ' Numeric characters
+                bAdd = bNumeric
+            Case 65 To 90    ' Upper case characters
+                bAdd = bUpper
+            Case 97 To 122  ' Lower case characters
+                bAdd = bLower
+            Case Else        ' Useless characters
+                bAdd = False
+        End Select
+        
+        If bAdd Then
+            sPW = sPW & Chr(nRnd)
+        End If
+        
+    Wend
+
+    CreatePassword = sPW
+
+End Function
+
+Sub ChangePassword(lngDatabaseID As Long, strDBUser As String, strOldDBPassword As String, strNewDBPassword As String, Optional strUserID As String = "", Optional strPassword As String = "", Optional blnIsAdmin As Boolean = False)
+    Dim rstDatabases As DAO.Recordset
+    Dim strDatabase As String, strSysDatabase As String
+    
+    Dim conn As ADODB.Connection
+    Dim cat As ADOX.Catalog
+    Dim myUser As New ADOX.User, myGroup As New ADOX.Group
+    Dim i As Integer
+    
+    Set rstDatabases = CurrentDb.OpenRecordset("SELECT * FROM tblDatabases WHERE DatabaseID = " & lngDatabaseID)
+    
+    With rstDatabases
+        If Not .EOF Then 'There is a record
+'            strDatabase = !DatabasePath & !DatabaseFileName
+'            strSysDatabase = !MDWFilePath & !MDWFileName
+            strDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!DatabasePath) & !DatabaseFileName
+            strSysDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!MDWFilePath) & !MDWFileName
+            
+'            If strUserID = "" Then strUserID = InputBox("Please enter your user name: ", "User Name")
+'            If strPassword = "" Then strPassword = InputBox("Please enter your password: ", "Password")
+            If strUserID = "" Then strUserID = strDBUser
+            If strPassword = "" Then strPassword = strOldDBPassword
+    
+            Set conn = New ADODB.Connection
+                With conn
+                    .Provider = "Microsoft.Jet.OLEDB.4.0"
+                    .Properties("Jet OLEDB:System Database") = strSysDatabase
+                    .Properties("User ID") = strUserID
+                    .Properties("Password") = strPassword
+                    .Open strDatabase
+                End With
+        
+            Set cat = New ADOX.Catalog
+            cat.ActiveConnection = conn
+            
+            If IsValidUser(lngDatabaseID, strDBUser, strUserID, strPassword) Then 'The user exists.
+                'conn.Execute "Create USER " & strDBUser & " " & strDBPassword
+                If blnIsAdmin Then
+                    If strNewDBPassword <> "" Then
+                        conn.Execute "ALTER USER " & strDBUser & " PASSWORD " & strNewDBPassword & "''" '& " " & strOldDBPassword
+                    Else
+                        conn.Execute "ALTER USER " & strDBUser & " PASSWORD " & "''" & "''" '& " " & strOldDBPassword
+                    End If
+                Else
+                    conn.Execute "ALTER USER " & strDBUser & " PASSWORD " & strNewDBPassword & " " & strOldDBPassword
+                End If
+            Else
+                MsgBox "The user does not exist!", vbOKOnly, "User does not exist."
+            End If
+        End If
+    End With
+            
+    conn.Close
+    Set conn = Nothing
+    
+    rstDatabases.Close
+    Set rstDatabases = Nothing
+    
+    
+End Sub
+
+Function IsValidUser(lngDatabaseID As Long, strDBUser As String, Optional strUserID As String = "", Optional strPassword As String = "") As Boolean
+    Dim rstDatabases As DAO.Recordset
+    Dim strDatabase As String, strSysDatabase As String
+    
+    Dim conn As ADODB.Connection
+    Dim cat As ADOX.Catalog
+    Dim myUser As New ADOX.User, myGroup As New ADOX.Group
+    Dim i As Integer
+    
+    Set rstDatabases = CurrentDb.OpenRecordset("SELECT * FROM tblDatabases WHERE DatabaseID = " & lngDatabaseID)
+    
+    With rstDatabases
+        If Not .EOF Then 'There is a record
+'            strDatabase = !DatabasePath & !DatabaseFileName
+'            strSysDatabase = !MDWFilePath & !MDWFileName
+            strDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!DatabasePath) & !DatabaseFileName
+            strSysDatabase = GetCurrentBackendServerPath & GetPathSansRoot(!MDWFilePath) & !MDWFileName
+            
+            If strUserID = "" Then strUserID = InputBox("Enter your user name:", "Admin User Name")
+            If strPassword = "" Then strPassword = InputBox("Enter your password:", "Admin Password")
+    
+            Set conn = New ADODB.Connection
+                With conn
+                    .Provider = "Microsoft.Jet.OLEDB.4.0"
+                    .Properties("Jet OLEDB:System Database") = strSysDatabase
+                    .Properties("User ID") = strUserID
+                    .Properties("Password") = strPassword
+                    .Open strDatabase
+                End With
+        
+            Set cat = New ADOX.Catalog
+            cat.ActiveConnection = conn
+            
+            IsValidUser = False
+            
+            i = 0
+            While i <= cat.Users.Count - 1 And Not IsValidUser
+            'For i = 0 To cat.Users.Count - 1
+                Debug.Print cat.Users(i)
+                If cat.Users(i) = strDBUser Then
+                    IsValidUser = True
+                End If
+            'Next i
+                i = i + 1
+            Wend
+            'conn.Execute "Create USER " & strDBUser & " " & strDBPassword
+            'conn.Execute "ALTER USER " & strDBUser & " PASSWORD " & strNewDBPassword & " " & strOldDBPassword
+        End If
+    End With
+            
+    conn.Close
+    Set conn = Nothing
+    
+    rstDatabases.Close
+    Set rstDatabases = Nothing
+    
+    
+
+End Function
+
+Sub TestMAM2()
+      '\\CBR\cbrfiles\Database\Admin_Database.mdb      \\CBR\cbrfiles\Database\SecureAdmin.mdw
+
+      Dim MyWorkSpace As DAO.Workspace
+      Dim SecuredDB As String
+      Dim slUserName As String
+      Dim slPassword As String
+      Dim db As DAO.Database
+      Dim rs As DAO.Recordset
+
+      'Set the location of the system database
+      DBEngine.SystemDB = "\\CBR\cbrfiles\Database\SecureAdmin.mdw"
+
+      'Create a new workspace object
+      slUserName = "moorema"
+      slPassword = "MetalMen1962"
+      Set MyWorkSpace = DBEngine.CreateWorkspace("MAM", slUserName, slPassword)
+
+      'Open the database
+      SecuredDB = _
+             "\\CBR\cbrfiles\Database\Admin_Database.mdb"
+      Set db = DBEngine.Workspaces("MAM").OpenDatabase(SecuredDB)
+
+      Set rs = db.OpenRecordset("tblGroups", dbOpenDynaset)
+      rs.MoveFirst
+      Debug.Print "The first record is " & rs.Fields("Group").Value
+
+      'Close the recordset and the database
+      rs.Close
+      db.Close
+   End Sub
+
+Function qryUserAccess(strUserName As String) As String
+    Dim strSQL As String
+    
+    strSQL = "SELECT tblDatabases.DatabaseName, tblDBUsersGroups.DBGroup" & vbCrLf
+    strSQL = strSQL & "FROM tblDBUsersGroups INNER JOIN tblDatabases ON tblDBUsersGroups.DatabaseID = tblDatabases.DatabaseID" & vbCrLf
+    strSQL = strSQL & "WHERE (((tblDBUsersGroups.DBUser)='" & strUserName & "'))"
+    strSQL = strSQL & "ORDER BY tblDatabases.DatabaseName, tblDBUsersGroups.DBGroup;"
+
+    qryUserAccess = strSQL
+End Function
+
+Function ListDBGroups(strUserName As String) As String
+    Dim strOutput As String, strDatabase As String, strGroup As String
+    Dim rst As DAO.Recordset
+    
+    Set rst = CurrentDb.OpenRecordset(qryUserDatabases(strUserName))
+    strOutput = ""
+    
+    While Not rst.EOF
+        strOutput = strOutput & rst!DatabaseName & " " & GetDBUserGroups(rst!DatabaseID, strUserName) & vbCrLf
+        rst.MoveNext
+        'Debug.Print strOutput
+    Wend
+    
+    rst.Close
+    ListDBGroups = strOutput
+End Function
+
+Function qryUserGroups(lngDatabaseID As Long, strUserName As String) As String
+    Dim strSQL As String
+    
+    strSQL = "SELECT tblDBUsersGroups.DBGroup" & vbCrLf
+    strSQL = strSQL & "From tblDBUsersGroups" & vbCrLf
+    strSQL = strSQL & "WHERE (((tblDBUsersGroups.DatabaseID) = " & lngDatabaseID & ") And ((tblDBUsersGroups.DBUser) = '" & strUserName & "'))" & vbCrLf
+    strSQL = strSQL & "ORDER BY tblDBUsersGroups.DBGroup;"
+
+    qryUserGroups = strSQL
+End Function
+
+Function qryUserDatabases(strUserName As String) As String
+    Dim strSQL As String
+    
+    strSQL = "SELECT tblDBUsersGroups.DatabaseID, tblDatabases.DatabaseName" & vbCrLf
+    strSQL = strSQL & "FROM tblDBUsersGroups INNER JOIN tblDatabases ON tblDBUsersGroups.DatabaseID = tblDatabases.DatabaseID" & vbCrLf
+    strSQL = strSQL & "WHERE (((tblDBUsersGroups.DBUser) = '" & strUserName & "'))" & vbCrLf
+    strSQL = strSQL & "GROUP BY tblDBUsersGroups.DatabaseID, tblDatabases.DatabaseName" & vbCrLf
+    strSQL = strSQL & "ORDER BY tblDatabases.DatabaseName;"
+    
+    qryUserDatabases = strSQL
+End Function
+
+Function GetDBUserGroups(lngDatabaseID As Long, strUserName As String) As String
+    'Return a list of groups for a particular user in a particular database
+    Dim rst As DAO.Recordset, strOutput As String, blnFirstRec As Boolean
+    
+    Set rst = CurrentDb.OpenRecordset(qryUserGroups(lngDatabaseID, strUserName)) 'set the recordset object to the query function (list of groups for user)
+    
+    blnFirstRec = True 'set a flag to indicate that this is the first record
+    While Not rst.EOF 'loop through the recordset
+        If blnFirstRec Then 'If this is the first record
+            strOutput = rst!dbgroup 'add to the output string but don't precede with ", "
+            blnFirstRec = False 'change the flag because we've already passed the first record
+        Else
+            strOutput = strOutput & ", " & rst!dbgroup 'add to the output string and precede with ", "
+        End If
+        rst.MoveNext 'move to the next record
+    Wend
+    
+    rst.Close
+    
+    Set rst = Nothing
+        
+    GetDBUserGroups = "(" & strOutput & ")"
+    
+End Function
+
+Function ListUserGroups_DB(Optional lngDatabaseID As Long = 0) As String
+    Dim strOutput As String, strGroup As String, strUserName As String, strDatabase As String, strUserGroups As String
+    Dim rst As DAO.Recordset, rstOutput As DAO.Recordset
+    
+    Set rst = CurrentDb.OpenRecordset(qryDBUsersGroups(lngDatabaseID))
+    Set rstOutput = CurrentDb.OpenRecordset("tblSecurityList_Temp")
+    
+    strOutput = ""
+    
+    While Not rst.EOF
+        strUserName = rst!DBUser
+        strUserGroups = GetDBUserGroups(rst!DatabaseID, rst!DBUser) 'Get a list of groups in the database for the user
+        strOutput = strOutput & rst!DatabaseName & "," & strUserName & ", " & rst!Name & "," & Chr(34) & strUserGroups & Chr(34) & vbCrLf
+        With rstOutput
+            .AddNew
+            !Database = rst!DatabaseName
+            !UserName = strUserName
+            !userfullname = rst!Name
+            !Groups = strUserGroups
+            .Update
+        End With
+        rst.MoveNext
+        'Debug.Print strOutput
+    Wend
+    
+    rst.Close
+    ListUserGroups_DB = strOutput
+End Function
+
+Function qryDBUsersGroups(Optional lngDatabaseID As Long = 0) As String
+    Dim strSQL As String
+    
+    strSQL = "SELECT tblDBUsersGroups.DatabaseID, tblDatabases.DatabaseName, tblDBUsersGroups.DBUser, [tblCBRUsers]![FirstName] & ' ' & [tblCBRUsers]![LastName] AS Name" & vbCrLf
+    strSQL = strSQL & "FROM (tblDBUsersGroups LEFT JOIN tblDatabases ON tblDBUsersGroups.DatabaseID = tblDatabases.DatabaseID) LEFT JOIN tblCBRUsers ON tblDBUsersGroups.DBUser = tblCBRUsers.DBUser" & vbCrLf
+    strSQL = strSQL & "GROUP BY tblDBUsersGroups.DatabaseID, tblDatabases.DatabaseName, tblDBUsersGroups.DBUser, [tblCBRUsers]![FirstName] & ' ' & [tblCBRUsers]![LastName]" & vbCrLf
+    If lngDatabaseID > 0 Then
+        strSQL = strSQL & "HAVING (((tblDBUsersGroups.DatabaseID) = " & lngDatabaseID & "))" & vbCrLf
+    End If
+    strSQL = strSQL & "ORDER BY tblDBUsersGroups.DBUser;"
+    
+'    strSQL = "SELECT tblDBUsersGroups.DatabaseID, tblDatabases.DatabaseName, tblDBUsersGroups.DBUser" & vbCrLf
+'    strSQL = strSQL & "FROM tblDBUsersGroups INNER JOIN tblDatabases ON tblDBUsersGroups.DatabaseID = tblDatabases.DatabaseID" & vbCrLf
+'    strSQL = strSQL & "GROUP BY tblDBUsersGroups.DatabaseID, tblDatabases.DatabaseName, tblDBUsersGroups.DBUser" & vbCrLf
+'    strSQL = strSQL & "HAVING (((tblDBUsersGroups.DatabaseID)=" & lngDatabaseID & "))" & vbCrLf
+'    strSQL = strSQL & "ORDER BY tblDBUsersGroups.DBUser;"
+    
+    qryDBUsersGroups = strSQL
+End Function
+
+
