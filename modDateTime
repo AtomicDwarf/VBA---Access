@@ -1,0 +1,193 @@
+Option Compare Database
+Option Explicit
+
+Function PreviousYearMonth(iMonth As Integer, iYear As Integer) As String
+    'Returns the first day of the month of the previous month
+    Dim pMonth As Integer, pYear As Integer
+    
+    If iMonth = 1 Then
+        pMonth = 12
+        pYear = iYear - 1
+    Else
+        pMonth = iMonth - 1
+        pYear = iYear
+    End If
+    PreviousYearMonth = Format(DateSerial(pYear, pMonth, 1), "yyyymm")
+End Function
+
+Function LastDayMonth(iMonth As Integer, iYear As Integer) As Date
+    'Given the month and year, return the last day of the month
+    If iMonth = 12 Then
+        LastDayMonth = DateSerial(iYear + 1, 1, 1) - 1
+    Else
+        LastDayMonth = DateSerial(iYear, iMonth + 1, 1) - 1
+    End If
+End Function
+
+Function FirstDayMonth(iMonth As Integer, iYear As Integer) As Date
+    'Given the month and year, return the first day of the month
+    FirstDayMonth = DateSerial(iYear, iMonth, 1)
+End Function
+
+Function NumDateToDate(lDateNum As Long) As Date
+    Dim strDate As String, iMonth As Integer, iYear As Integer, iDay As Integer
+    
+    'strDate = Trim(Str(lDateNum))
+    iYear = (lDateNum / 10000)
+    lDateNum = lDateNum - (CLng(iYear) * 10000)
+    iMonth = Int(lDateNum / 100)
+    iDay = lDateNum - iMonth * 100
+    
+    NumDateToDate = DateSerial(iYear, iMonth, iDay)
+End Function
+
+Function TimeRange(dTime As Date) As Date
+    Dim iHour As Integer, iMinute As Integer, iSecond As Integer, X As Single
+    
+    iHour = Int(dTime * 24)
+    X = (dTime * 24 - iHour) * 60
+    iMinute = Int(X)
+    X = (X - iMinute) * 60
+    iSecond = Int(X)
+    
+    If iMinute >= 30 Then
+        TimeRange = TimeSerial(iHour, 30, 0)
+    Else
+        TimeRange = TimeSerial(iHour - 1, 30, 0)
+    End If
+End Function
+
+Function WeekEndDay(mDate As Date, Optional LastDayWeek As Integer) As Date
+    If IsMissing(LastDayWeek) Then
+        LastDayWeek = vbSaturday
+    End If
+    
+    If Weekday(mDate) = LastDayWeek Then
+        WeekEndDay = Int(mDate)
+    Else
+        WeekEndDay = Int(mDate) + (LastDayWeek - Weekday(mDate))
+    End If
+End Function
+
+Function WeekBeginDay(mDate As Date, Optional FirstDayWeek As Variant) As Date
+    If IsMissing(FirstDayWeek) Then
+        FirstDayWeek = vbSunday
+    End If
+    
+    If Weekday(mDate) = FirstDayWeek Then
+        WeekBeginDay = Int(mDate)
+    Else
+        WeekBeginDay = Int(mDate) - (Weekday(mDate) - FirstDayWeek)
+        If WeekBeginDay > mDate Then WeekBeginDay = WeekBeginDay - 7
+    End If
+End Function
+
+Function WhatQuarter(intMonth As Integer) As Integer
+    WhatQuarter = Int((intMonth - 1) / 3) + 1
+
+End Function
+
+Function dhNthWeekday(dtmDate As Date, intN As Integer, _
+ intDOW As Integer) As Date
+    ' Find the date of the specified day within the month. For
+    ' example, retrieve the 3rd Tuesday's date.
+    Dim dtmTemp As Date
+    If (intDOW < vbSunday Or intDOW > vbSaturday) _
+    Or (intN < 1) Then
+        ' Invalid parameter values. Just
+        ' return the passed-in date.
+        dhNthWeekday = dtmDate
+        Exit Function
+    End If
+    ' Get the first of the month.
+    dtmTemp = DateSerial(Year(dtmDate), Month(dtmDate), 1)
+    ' Get to the first intDOW in the month.
+    Do While Weekday(dtmTemp) <> intDOW
+        dtmTemp = dtmTemp + 1
+    Loop
+    ' Now you've found the first intDOW in the month.
+    ' Just add 7 for each intN after that.
+    dhNthWeekday = dtmTemp + ((intN - 1) * 7)
+    'http://msdn.microsoft.com/en-us/library/aa227532(v=vs.60).aspx
+End Function
+
+Function PreviousDOW(intDOW As Integer) As Date
+    'Dim dteToday As Date, dteTemp As Date
+    
+    'If Weekday(Date) = intDOW Then
+    '    PreviousDOW = Date - 7
+    'Else
+    '    If Weekday(Date) < intDOW Then
+    '        PreviousDOW = Date - (Weekday(Date - intDOW))
+    '    Else
+    '        previousdow=date-(7-
+    PreviousDOW = Date - (Weekday(Date, intDOW) + 6)
+
+End Function
+
+Public Function PreviousDayOfWeek(StartDate As Date, DayOfWeek As VbDayOfWeek, Optional blnCurrentNotPrevious As Boolean = False) As Variant
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' PreviousDayOfWeek
+' This function returns the date of the DayOfWeek prior to StartDate.
+' Note that this function uses WSMod to use Excel's worksheet function MOD
+' rather than VBA's Mod operator.
+' Formula equivalent:
+'  =StartDate-MOD(WEEKDAY(StartDate)-DayOfWeek,7)
+'http://www.cpearson.com/excel/DayOfWeekFunctions.aspx
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+If (DayOfWeek < vbSunday) Or (DayOfWeek > vbSaturday) Then
+    PreviousDayOfWeek = CVErr(xlErrValue)
+    Exit Function
+End If
+If (StartDate < 0) Then
+    PreviousDayOfWeek = CVErr(xlErrValue)
+    Exit Function
+End If
+
+If Weekday(Date) = Weekday(DayOfWeek) And blnCurrentNotPrevious Then
+    PreviousDayOfWeek = StartDate - 7
+Else
+    PreviousDayOfWeek = StartDate - WSMod(Weekday(StartDate) - DayOfWeek, 7)
+End If
+
+End Function
+
+Function WSMod(Number As Double, Divisor As Double) As Double
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' WSMod
+' The Excel worksheet function MOD and the VBA Mod operator
+' work differently and can return different results under
+' certain circumstances. For continuity between the worksheet
+' formulas and the VBA code, we use this WSMod function, which
+' produces the same result as the Excel MOD worksheet function,
+' rather than the VBA Mod operator.
+'http://www.cpearson.com/excel/DayOfWeekFunctions.aspx
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    WSMod = Number - Divisor * Int(Number / Divisor)
+End Function
+
+Function GetPreviousSaturday()
+    Dim intCurrentDOW As Integer
+    
+    intCurrentDOW = Weekday(Date)
+    
+    If intCurrentDOW = 7 Then 'Today is Saturday
+        GetPreviousSaturday = Date
+    Else
+        GetPreviousSaturday = Date - intCurrentDOW
+    End If
+End Function
+
+Function TextDOW(intDOW) As String
+    Dim strDays As String
+    
+    strDays = "NMTWRFS"
+    
+    If intDOW >= 1 And intDOW <= 7 Then
+        TextDOW = Mid(strDays, intDOW, 1)
+    Else
+        TextDOW = ""
+    End If
+End Function
+
