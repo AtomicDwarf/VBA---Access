@@ -526,3 +526,44 @@ Sub GetQueries()
     Set qdf = Nothing
     Set rst = Nothing
 End Sub
+
+Function InList(strRecordsetName As String, strFieldName As String, Optional intDataType As Integer = 1) As String
+    'intDataType: 1=Number, 2=String, 3=Date
+    Dim rst As DAO.Recordset, fld As DAO.Field
+    Dim strList As String, blnFirstRecord As Boolean, strQualifier As String
+    
+    Set rst = CurrentDb.OpenRecordset(strRecordsetName)
+    
+    Select Case intDataType
+        Case 1 ' Number
+            strQualifier = ""
+        Case 2 ' String
+            strQualifier = "'"
+        Case 3 ' Date
+            strQualifier = "#"
+    End Select
+    
+    strList = ""
+    blnFirstRecord = True
+    
+    While Not rst.EOF
+        Set fld = rst.Fields(strFieldName)
+        If blnFirstRecord Then
+            'Need to account for blanks
+            strList = strList & strQualifier & fld.Value & strQualifier
+            blnFirstRecord = False
+        Else
+            'Need to account for blanks
+            strList = strList & ", " & strQualifier & fld.Value & strQualifier
+        End If
+        
+        rst.MoveNext
+    Wend
+    
+    Set fld = Nothing
+    Set rst = Nothing
+    
+    strList = strList
+    
+    InList = strList
+End Function
