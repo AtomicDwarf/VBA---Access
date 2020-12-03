@@ -1,0 +1,430 @@
+Option Compare Database
+Option Explicit
+
+Public Function GetFileName(Optional strTitle As String = "", Optional blnFullPath As Boolean) As String
+'Requires reference to Microsoft Office 11.0 Object Library.
+'allows user to select file
+
+ Dim fDialog As Office.FileDialog
+ Dim varFile As Variant
+
+ ' Clear listbox contents.
+ 'Me.FileList.RowSource = ""
+
+ ' Set up the File Dialog.
+ Set fDialog = Application.FileDialog(msoFileDialogFilePicker)
+
+ With fDialog
+
+    ' Allow user to make multiple selections in dialog box or not
+    .AllowMultiSelect = False
+          
+    .InitialFileName = WhereAmI
+    
+    ' Set the title of the dialog box.
+    If strTitle = "" Then strTitle = "Please select one or more files"
+    .Title = strTitle
+
+    ' Clear out the current filters, and add our own.
+    .Filters.Clear
+    .Filters.Add "Excel 2007 Workbooks", "*.xlsx"
+    .Filters.Add "Excel 2007 Workbooks", "*.xlsm"
+    .Filters.Add "Excel Workbooks", "*.xls"
+    .Filters.Add "All Files", "*.*"
+
+    .FilterIndex = 1
+    ' Show the dialog box. If the .Show method returns True, the
+    ' user picked at least one file. If the .Show method returns
+    ' False, the user clicked Cancel.
+    If .Show = True Then
+
+       'Loop through each file selected and add it to our list box.
+       For Each varFile In .SelectedItems
+          If blnFullPath Then
+            GetFileName = varFile 'Return the full file name and path
+          Else
+            GetFileName = FileNameFromFullPath(CStr(varFile)) 'Return just the file name
+          End If
+       Next
+      
+    Else
+       GetFileName = ""
+       'MsgBox "You clicked Cancel in the file dialog box."
+    End If
+ End With
+End Function
+
+Public Function GetFolderName() As String
+' Requires reference to Microsoft Office 11.0 Object Library.
+'Allows user to select a folder name
+ Dim fDialog As Office.FileDialog
+ Dim varFile As Variant
+
+ ' Clear listbox contents.
+ 'Me.FileList.RowSource = ""
+
+ ' Set up the File Dialog.
+ Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
+
+ With fDialog
+
+    ' Allow user to make multiple selections in dialog box or not
+    .AllowMultiSelect = False
+          
+    ' Set the title of the dialog box.
+    .Title = "Please select one or more folders"
+
+    ' Clear out the current filters, and add our own.
+    '.Filters.Clear
+    '.Filters.Add "Access Databases", "*.MDB"
+    '.Filters.Add "Access Projects", "*.ADP"
+    '.Filters.Add "All Files", "*.*"
+
+    ' Show the dialog box. If the .Show method returns True, the
+    ' user picked at least one file. If the .Show method returns
+    ' False, the user clicked Cancel.
+    If .Show = True Then
+
+       'Loop through each folder selected and add it to our list box.
+       For Each varFile In .SelectedItems
+          GetFolderName = varFile
+       Next
+      
+    Else
+       GetFolderName = ""
+       'MsgBox "You clicked Cancel in the file dialog box."
+    End If
+ End With
+End Function
+
+Public Function FileExists(FileName As String, Optional strPath = "") As Boolean
+  Dim strFilePath As String
+  
+  If strPath = "" Then strPath = WhereAmI
+  strFilePath = strPath & FileName
+  'Check to see if a file exists given the fully qualified path and name
+  'FileExists = (Dir(FileName) > "")
+  FileExists = (Dir(strFilePath) > "")
+End Function
+
+Public Function FileExists2(FileName As String) As Boolean
+  'Check to see if a file exists given the fully qualified path and name
+  FileExists2 = (Dir(FileName) > "")
+End Function
+
+Public Function FolderExists(strFolder As String) As Boolean
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If fso.FolderExists(strFolder) Then
+        FolderExists = True
+        'MsgBox strFolder & " is a valid folder/path.", vbInformation, "Path Exists"
+    Else
+        FolderExists = False
+        'MsgBox strFolder & " is not a valid folder/path.", vbInformation, "Invalid Path"
+    End If
+End Function
+Function CreateFolder(strFolder As String) As Boolean
+    Dim fso
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If Not fso.FolderExists(strFolder) Then
+        fso.CreateFolder (strFolder)
+        CreateFolder = True
+    Else
+        CreateFolder = False
+        'MsgBox strFolder & " already exists!", vbExclamation, "Folder Exists"
+    End If
+End Function
+Sub CopyFolder()
+Dim fso
+Dim sfol As String, dfol As String
+sfol = "c:\MyFolder" ' change to match the source folder path
+dfol = "e:\MyFolder" ' change to match the destination folder path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If Not fso.FolderExists(dfol) Then
+    fso.CopyFolder sfol, dfol
+Else
+    MsgBox dfol & " already exists!", vbExclamation, "Folder Exists"
+End If
+End Sub
+Sub MoveFolder()
+' ***********************************************************
+' ***      This will only work if your operating system   ***
+' ***          allows it otherwise an error occurs        ***
+' ***********************************************************
+Dim fso
+Dim fol As String, dest As String, sfol As String, dfol As String
+sfol = "c:\MyFolder" ' change to match the source folder path
+dfol = "e:\MyFolder" ' change to match the destination folder path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If Not fso.FolderExists(dfol) Then
+    fso.MoveFolder sfol, dfol
+Else
+    MsgBox dfol & " already exists!", vbExclamation, "Folder Exists"
+End If
+End Sub
+Sub DeleteFolder()
+' ***********************************************************
+' *** This will delete a folder even if it contains files ***
+' ***                 Use With Caution                    ***
+' ***********************************************************
+Dim fso
+Dim fol As String
+fol = "c:\MyFolder" ' change to match the folder path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If fso.FolderExists(fol) Then
+    fso.DeleteFolder fol
+Else
+    MsgBox fol & " does not exist or has already been deleted!" _
+        , vbExclamation, "Folder not Found"
+End If
+End Sub
+Sub FileExists3()
+Dim fso
+Dim file As String
+file = "C:\Test.xls" ' change to match the file w/Path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If Not fso.FileExists(file) Then
+    MsgBox file & " was not located.", vbInformation, "File Not Found"
+Else
+    MsgBox file & " has been located.", vbInformation, "File Found"
+End If
+End Sub
+
+Sub CopyFile()
+Dim fso
+Dim file As String, sfol As String, dfol As String
+file = "test.xls" ' change to match the file name
+sfol = "C:\" ' change to match the source folder path
+dfol = "E:\" ' change to match the destination folder path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If Not fso.FileExists(sfol & file) Then
+    MsgBox sfol & file & " does not exist!", vbExclamation, "Source File Missing"
+ElseIf Not fso.FileExists(dfol & file) Then
+    fso.CopyFile (sfol & file), dfol, True
+Else
+    MsgBox dfol & file & " already exists!", vbExclamation, "Destination File Exists"
+End If
+End Sub
+Sub MoveFile()
+Dim fso
+Dim file As String, sfol As String, dfol As String
+file = "test.xls" ' change to match the file name
+sfol = "C:\" ' change to match the source folder path
+dfol = "E:\" ' change to match the destination folder path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If Not fso.FileExists(sfol & file) Then
+    MsgBox sfol & file & " does not exist!", vbExclamation, "Source File Missing"
+ElseIf Not fso.FileExists(dfol & file) Then
+    fso.MoveFile (sfol & file), dfol
+Else
+    MsgBox dfol & file & " already exists!", vbExclamation, "Destination File Exists"
+End If
+End Sub
+Sub DeleteFile()
+Dim fso
+Dim file As String
+file = "C:\test.xls" ' change to match the file w/Path
+Set fso = CreateObject("Scripting.FileSystemObject")
+If fso.FileExists(file) Then
+    fso.DeleteFile file, True
+Else
+    MsgBox file & " does not exist or has already been deleted!" _
+            , vbExclamation, "File not Found"
+End If
+End Sub
+
+Sub ExportTable(strTableName As String, Optional strFileNameExt As String = "")
+    Dim strFile As String
+    
+    If strFileNameExt = "" Then
+        strFile = strTableName & ".xlsx"
+    Else
+        strFile = strFileNameExt
+    End If
+    
+    CreateFolder WhereAmI & Preference("DefaultImportExportFolder") 'Create the folder if it doesn't exist
+    DoCmd.OutputTo acOutputTable, strTableName, acFormatXLSX, WhereAmI & Preference("DefaultImportExportFolder") & strFile
+End Sub
+
+Sub RenameFiles(iMonth As Integer, iYear As Integer)
+    Dim strSuffix As String, strPrompt As String, iResult As Integer
+    Dim strPath As String, strFileName As String, strFilePath As String, strFileExt As String
+    
+    strSuffix = " - " & Format(iYear, "0000") & "-" & Format(iMonth, "00")
+    strPath = WhereAmI & Preference("DefaultReportFolder")
+    strPrompt = "Would you like to rename the output files " & vbCrLf
+    'strPrompt = strPrompt & "Call Metrics.xls, Case Load.xls and Call Metrics.ppt" & vbCrLf
+    strPrompt = strPrompt & "by adding the suffix " & strSuffix & "?"
+    
+    iResult = MsgBox(strPrompt, vbYesNo, "Rename Files")
+    
+    If iResult = vbYes Then
+        strFileName = "Pending Cases"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "Total Account Leader Metrics"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "Call Metrics"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "Customer Survey Results"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "Case Initiation"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "ER_EP Metrics"
+        strFileExt = ".pptx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "Closed Cases"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "Customer Survey Comments"
+        strFileExt = ".docx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        strFileName = "HR Direct"
+        strFileExt = ".xlsx"
+        strFilePath = strPath & strFileName & strFileExt
+        If FileExists(strFileName & strFileExt, strPath) Then
+            Name strPath & strFileName & strFileExt As strPath & strFileName & strSuffix & strFileExt
+        End If
+        
+        MsgBox "Files have been renamed.", vbOKOnly, "Rename Files"
+    End If
+    
+End Sub
+
+Sub GetFilesInfo(strFolderPath As String)
+    Dim fso As Object
+    Dim strFileName As String, dteCreated As Date
+    
+    
+    
+End Sub
+
+Function GetSpaceRemaining(strDrive As String) As Double
+    Dim fso As Scripting.FileSystemObject
+    On Error GoTo Handle_Error
+    Set fso = New FileSystemObject
+    
+    Debug.Print fso.GetDrive(strDrive).AvailableSpace
+    
+    GetSpaceRemaining = fso.GetDrive(strDrive).AvailableSpace
+    Exit Function
+Handle_Error:
+    If Err.Number <> 76 Then
+        MsgBox Err.Number & ": " & Err.Description
+    End If
+    
+End Function
+
+
+Sub ListFiles(strFilePath As String)
+
+    'Set a reference to Microsoft Scripting Runtime by using
+    'Tools > References in the Visual Basic Editor (Alt+F11)
+    
+    'Declare the variables
+    Dim objFSO As Scripting.FileSystemObject
+    Dim objTopFolder As Scripting.Folder
+    Dim strTopFolderName As String
+    
+    Dim xlApp As Excel.Application, xlBook As Excel.Workbook, xlSheet As Excel.Worksheet
+    
+    Set xlApp = New Excel.Application
+    Set xlBook = xlApp.Workbooks.Add
+    Set xlSheet = xlBook.Worksheets.Add
+    
+    xlApp.Visible = True
+    
+    With xlSheet
+    'Insert the headers for Columns A through F
+    .Range("A1").Value = "File Name"
+    .Range("B1").Value = "File Size"
+    .Range("C1").Value = "File Type"
+    .Range("D1").Value = "Date Created"
+    .Range("E1").Value = "Date Last Accessed"
+    .Range("F1").Value = "Date Last Modified"
+    End With
+    'Assign the top folder to a variable
+    strTopFolderName = strFilePath
+    
+    'Create an instance of the FileSystemObject
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    
+    'Get the top folder
+    Set objTopFolder = objFSO.GetFolder(strTopFolderName)
+    
+    'Call the RecursiveFolder routine
+    Call RecursiveFolder(objTopFolder, True, xlSheet)
+    
+    'Change the width of the columns to achieve the best fit
+    Columns.AutoFit
+    
+End Sub
+
+Sub RecursiveFolder(objFolder As Scripting.Folder, _
+    IncludeSubFolders As Boolean, xlSheet As Excel.Worksheet)
+
+    'Declare the variables
+    Dim objFile As Scripting.file
+    Dim objSubFolder As Scripting.Folder
+    Dim NextRow As Long
+    
+    With xlSheet
+    'Find the next available row
+    NextRow = Cells(Rows.Count, "A").End(xlUp).Row + 1
+    
+    'Loop through each file in the folder
+    For Each objFile In objFolder.Files
+        .Cells(NextRow, "A").Value = objFile.Name
+        .Cells(NextRow, "B").Value = objFile.Size
+        .Cells(NextRow, "C").Value = objFile.Type
+        .Cells(NextRow, "D").Value = objFile.DateCreated
+        .Cells(NextRow, "E").Value = objFile.DateLastAccessed
+        .Cells(NextRow, "F").Value = objFile.DateLastModified
+        NextRow = NextRow + 1
+    Next objFile
+    End With
+    'Loop through files in the subfolders
+    If IncludeSubFolders Then
+        For Each objSubFolder In objFolder.SubFolders
+            Call RecursiveFolder(objSubFolder, True, xlSheet)
+        Next objSubFolder
+    End If
+    
+End Sub
+
