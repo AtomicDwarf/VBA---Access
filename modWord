@@ -1,0 +1,237 @@
+Option Compare Database
+Option Explicit
+
+'Sub CreateSurveyCommentsDocument(intYear As Integer, intMonth As Integer, Optional strHRRep As String)
+'    Dim wrdApp As Word.Application, wrdDoc As Word.Document
+'
+'    Set wrdApp = New Word.Application
+'    Set wrdDoc = wrdApp.Documents.Add
+'
+'    With wrdApp
+'        .Visible = True
+'        With .Selection
+'            .Font.Name = "Times new Roman"
+'            .Font.Size = 16
+'            .Font.Bold = True
+'            .ParagraphFormat.Alignment = wdAlignParagraphCenter 'center the paragraph
+'            .TypeText MonthName(intMonth) & " " & intYear & " Customer Satisfaction Survey Comments"
+'            .Font.Size = 10
+'            .Font.Bold = False
+'            .ParagraphFormat.Alignment = wdAlignParagraphLeft
+'            .TypeParagraph
+'
+''            .Font.Bold = False
+''            .Font.Size = 14
+''            .Font.Underline = wdUnderlineSingle
+''            .TypeText strHRRep
+''
+''            .Font.Underline = wdUnderlineNone
+''            .Font.Size = 12
+''            .TypeParagraph
+''
+''            .Range.ListFormat.ApplyNumberDefault
+'            wrdInsertSurveyComments wrdDoc, strHRRep
+'        End With
+'
+'    End With
+'
+'    wrdApp.DisplayAlerts = wdAlertsNone
+'    wrdDoc.SaveAs WhereAmI & Preference("DefaultReportFolder") & "Customer Survey Comments.docx"
+'Done:
+'    Set wrdDoc = Nothing
+'    Set wrdApp = Nothing
+'
+'End Sub
+
+Function wrdInsertQuery(strQuery As String, wrdDoc As Word.Document, Optional blnIncludeTitles As Boolean = True, Optional bProtectSheet As Boolean = False) As Variant
+    Dim acQuery As QueryDef, objRST As Recordset
+    Dim strQueryName As String, strSheetName As String
+    Dim iCols As Integer, strPath As String, iFieldCount As Integer, lCol As Long, lRow As Long, iRecCount As Integer
+    Dim vResult(2), wrdApp As Word.Application
+    
+    Set wrdApp = wrdDoc.Application
+    
+    strPath = WhereAmI 'Find out where this database is and set strPath to its location
+    
+    strQueryName = strQuery 'Set the name of the query to use.
+    strSheetName = Trim(Left(strQueryName, 31))
+    Set objRST = Application.CurrentDb.OpenRecordset(strQueryName)
+    iFieldCount = objRST.Fields.Count 'Get the number of fields
+    
+    objRST.MoveLast
+    iRecCount = objRST.RecordCount
+    objRST.MoveFirst
+    
+    vResult(1) = objRST.RecordCount
+    vResult(2) = objRST.Fields.Count
+    
+    If vResult(1) > 0 Then 'There were some actual records... proceed
+        'xlSheet.Unprotect 'Unprotect the sheet
+        
+        'lCol = xlSheet.Range(strStartCell).Column 'Get the column of the starting cell
+        'lRow = xlSheet.Range(strStartCell).Row 'Get the row of the starting cell
+        
+        'Insert Column Headings
+        With wrdApp
+            With .Selection
+                If blnIncludeTitles Then
+                    For iCols = 0 To iFieldCount - 1
+                        .TypeText objRST.Fields(iCols).Name
+                        .TypeText Chr(9)
+                    Next
+                    .TypeParagraph
+                End If
+                
+                While Not objRST.EOF
+                    For iCols = 0 To iFieldCount - 1
+                        .TypeText objRST.Fields(iCols).Value
+                        .TypeText Chr(9)
+                    Next
+                    .TypeParagraph
+                    objRST.MoveNext
+                Wend
+            End With
+        End With
+    End If
+    
+    wrdInsertQuery = vResult
+    
+    
+    'We're done now. Reset the objects and call it a day.
+    Set objRST = Nothing
+    Set wrdApp = Nothing
+End Function
+
+'Sub wrdInsertSurveyComments(wrdDoc As Word.Document, strHRRep As String)
+'    Dim acQuery As QueryDef, objRST As Recordset
+'    Dim strQueryName As String, strSheetName As String
+'    Dim iCols As Integer, strPath As String, iFieldCount As Integer, lCol As Long, lRow As Long, iRecCount As Integer
+'    Dim vResult(2), wrdApp As Word.Application, strRep As String, strCurrentRep As String
+'
+'    Set wrdApp = wrdDoc.Application
+'
+'    strPath = WhereAmI 'Find out where this database is and set strPath to its location
+'
+'    strQueryName = qrySurveyCommentsExport(strHRRep) 'Set the name of the query to use.
+'    Set objRST = Application.CurrentDb.OpenRecordset(strQueryName)
+'    iFieldCount = objRST.Fields.Count 'Get the number of fields
+'
+'    objRST.MoveLast
+'    iRecCount = objRST.RecordCount
+'    objRST.MoveFirst
+'
+'    vResult(1) = objRST.RecordCount
+'    vResult(2) = objRST.Fields.Count
+'
+'    If vResult(1) > 0 Then 'There were some actual records... proceed
+'        'xlSheet.Unprotect 'Unprotect the sheet
+'
+'        'lCol = xlSheet.Range(strStartCell).Column 'Get the column of the starting cell
+'        'lRow = xlSheet.Range(strStartCell).Row 'Get the row of the starting cell
+'
+'        'Insert Column Headings
+'        With wrdApp
+'            strRep = ""
+'            With .Selection
+'                While Not objRST.EOF
+'                    strCurrentRep = objRST.Fields(0).Value
+'                    If strCurrentRep <> strRep Then 'New Rep
+'                        .Range.ListFormat.RemoveNumbers NumberType:=wdNumberParagraph 'Turn off the list
+'
+'                        '.TypeParagraph
+'                        strRep = strCurrentRep
+'                        .Font.Size = 14                     'set font size for heading
+'                        .Font.Underline = wdUnderlineSingle 'turn on underline
+'                        .Font.Bold = True                   'turn on bold
+'                        .TypeText strCurrentRep             'Type the rep's name
+'                        .Font.Underline = wdUnderlineNone   'turn off underline
+'                        .Font.Bold = False                  'turn off bold
+'                        .TypeParagraph                      'add paragraph <ENTER>
+'                        .Font.Size = 10 'set font size for list items
+'
+'                        'start on numbered list
+'                        With wrdApp.ListGalleries(wdNumberGallery).ListTemplates(1).ListLevels(1)
+'                            .NumberFormat = "%1."
+'                            .TrailingCharacter = wdTrailingTab
+'                            .NumberStyle = wdListNumberStyleArabic
+'                            .NumberPosition = InchesToPoints(0.25)
+'                            .Alignment = wdListLevelAlignLeft
+'                            .TextPosition = InchesToPoints(0.5)
+'                            .TabPosition = wdUndefined
+'                            .ResetOnHigher = 0
+'                            .StartAt = 1
+'                            With .Font
+'                                .Bold = wdUndefined
+'                                .Italic = wdUndefined
+'                                .Strikethrough = wdUndefined
+'                                .Subscript = wdUndefined
+'                                .Superscript = wdUndefined
+'                                .Shadow = wdUndefined
+'                                .Outline = wdUndefined
+'                                .Emboss = wdUndefined
+'                                .Engrave = wdUndefined
+'                                .Allcaps = wdUndefined
+'                                .Hidden = wdUndefined
+'                                .Underline = wdUndefined
+'                                .Color = wdUndefined
+'                                .Size = wdUndefined
+'                                .Animation = wdUndefined
+'                                .DoubleStrikeThrough = wdUndefined
+'                                .Name = ""
+'                            End With
+'                            .LinkedStyle = ""
+'                        End With
+'
+'                        wrdApp.ListGalleries(wdNumberGallery).ListTemplates(1).Name = ""
+'
+'                        .Range.ListFormat.ApplyListTemplateWithLevel ListTemplate:= _
+'                            wrdApp.ListGalleries(wdNumberGallery).ListTemplates(1), ContinuePreviousList:= _
+'                            False, ApplyTo:=wdListApplyToWholeList, DefaultListBehavior:= _
+'                            wdWord10ListBehavior
+'
+'                    End If
+'
+'                    'MsgBox objRST.Fields(1).Value
+'                    .TypeText ReplaceCRLF(objRST.Fields(1).Value) 'type the items
+'                    .TypeParagraph 'Add paragraph <ENTER>
+'
+'                    objRST.MoveNext
+'                Wend
+'
+'                .Range.ListFormat.RemoveNumbers NumberType:=wdNumberParagraph 'Turn off the list
+'
+'            End With
+'        End With
+'    End If
+'
+'    'wrdInsertQuery = vResult
+'
+'
+'    'We're done now. Reset the objects and call it a day.
+'    Set objRST = Nothing
+'    Set wrdApp = Nothing
+'End Sub
+
+Function wdReplaceParagraphLineBreak(strText As String)
+    Dim X As String, Y As Integer, i As Integer
+    
+    Y = Len(strText)
+    X = ""
+    
+    For i = 1 To Y
+        X = X & IIf(Mid(strText, i, 1) = Chr(10), "", Mid(strText, i, 1))
+    Next i
+    
+    wdReplaceParagraphLineBreak = X
+        
+End Function
+
+Sub TestIt()
+    Dim X As String
+    
+    X = "I was on a medical leave for 2 weeks with a note from my doctor. The nurse in Absence Mgmt determined that I was not sick enough to be paid for the entire time off. I have gone back & forth several times trying to get the appropriate information from the doctor.  He has sent in additional information 2-3 times, but the nurse feels that I was not sick enough. Is this a new Lilly Policy? I was under the understanding that the doctor is closest to the case, knows all underlying illnesses, and he is the one to determine if you should be off of work."
+    X = X & vbCrLf
+    X = X & "I also didn't find this out until after I returned to work - after the fact.  Not that I could have come into the office had I known I wasn't going to be paid for it, but if there were questions, shouldn't the nurse contact the doctor instead of going through me?  I don't have any idea of what she was looking for so could only tell my dr.'s office that they needed more information."
+
+    Debug.Print wdReplaceParagraphLineBreak(X)
+End Sub
