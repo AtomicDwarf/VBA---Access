@@ -1,0 +1,423 @@
+Option Compare Database
+Option Explicit
+
+Sub ListTables()
+    Dim tdf As TableDef
+    
+    For Each tdf In CurrentDb.TableDefs
+        Debug.Print "Table: " & tdf.Name
+    Next
+    
+    Set tdf = Nothing
+End Sub
+
+Sub ListQueries()
+    Dim qdf As QueryDef
+    
+    For Each qdf In CurrentDb.QueryDefs
+        Debug.Print "Query: " & qdf.Name
+        Debug.Print "SQL: " & qdf.sql
+    Next
+    
+    Set qdf = Nothing
+End Sub
+
+Sub ListTableFields(strTableName As String, Optional strDelimiter As String = ",")
+    Dim db As DAO.Database, tdf As DAO.TableDef, fld As DAO.Field
+    
+    Set db = CurrentDb
+    Set tdf = db.TableDefs(strTableName)
+    
+    Debug.Print "Field Name" & strDelimiter & " " & "Field Type" & strDelimiter & " " & "Field Size" & strDelimiter & " " & "Default"
+    For Each fld In tdf.Fields
+        Debug.Print fld.Name & strDelimiter & " " & GetFieldType(fld.Type) & strDelimiter & " " & fld.Size & strDelimiter & " " & fld.DefaultValue
+    Next
+    
+    Set fld = Nothing
+    Set tdf = Nothing
+    
+End Sub
+
+Function RecordCount(strRecordset As String) As Long
+    Dim rst As DAO.Recordset
+    
+    Set rst = CurrentDb.OpenRecordset(strRecordset)
+    
+    If Not rst.EOF Then
+        rst.MoveLast
+        RecordCount = rst.RecordCount
+    Else
+        RecordCount = 0
+    End If
+    
+    rst.Close
+    Set rst = Nothing
+End Function
+
+Sub ListForms()
+    Dim i As Integer, N As Integer
+    
+    N = CurrentProject.AllForms.Count
+    For i = 0 To N - 1
+        Debug.Print "Form: " & CurrentProject.AllForms(i).FullName
+    Next
+    
+    
+End Sub
+
+Sub ListModules()
+    Dim i As Integer, N As Integer
+    
+    N = CurrentProject.AllModules.Count
+    
+    For i = 0 To N - 1
+        Debug.Print "Module: " & CurrentProject.AllModules(i).Name
+    Next i
+End Sub
+
+Sub ListMacros()
+    Dim i As Integer, N As Integer
+    
+    N = CurrentProject.AllMacros.Count
+    
+    For i = 0 To N - 1
+        Debug.Print "Macro: " & CurrentProject.AllMacros(i).Name
+    Next i
+End Sub
+
+Sub ListReports()
+    Dim i As Integer, N As Integer
+    
+    N = CurrentProject.AllReports.Count
+    
+    For i = 0 To N - 1
+        Debug.Print CurrentProject.AllReports(i).Name
+    Next i
+End Sub
+
+Sub ListObjects()
+    ListTables
+    ListQueries
+    ListForms
+    ListMacros
+    ListReports
+    ListModules
+End Sub
+
+Sub ListAllTablesFields()
+    Dim tdf As TableDef
+    
+    For Each tdf In CurrentDb.TableDefs
+        Debug.Print "Table: " & tdf.Name
+        ListTableFields (tdf.Name)
+    Next
+    
+    Set tdf = Nothing
+End Sub
+
+Sub GetTableFields(strTableName As String)
+    Dim db As DAO.Database, tdf As DAO.TableDef, fld As DAO.Field
+    
+    Set db = CurrentDb
+    Set tdf = db.TableDefs(strTableName)
+    
+    For Each fld In tdf.Fields
+        Debug.Print "Field Name: " & fld.Name
+        Debug.Print "Field Type: " & fld.Type
+        Debug.Print "Field Size: " & fld.Size
+    Next
+    
+    Set fld = Nothing
+    Set tdf = Nothing
+    
+End Sub
+
+Sub CreateCBRTablesTable()
+    Dim tdf As DAO.TableDef
+    
+    Set tdf = CurrentDb.CreateTableDef("tblCBRTables")
+        
+    With tdf
+        .Fields.Append .CreateField("TableName", dbText, 50)
+        .Fields.Append .CreateField("Connection", dbText, 255)
+        '.Fields.Append .CreateField("FieldName", dbText, 50)
+        '.Fields.Append .CreateField("FieldType", dbInteger)
+        '.Fields.Append .CreateField("FieldSize", dbInteger)
+    
+    End With
+    
+    CurrentDb.TableDefs.Append tdf
+    
+    Set tdf = Nothing
+    
+    Application.RefreshDatabaseWindow
+    
+End Sub
+
+Sub CreateTableDefsTable()
+    Dim tdf As DAO.TableDef
+    
+    Set tdf = CurrentDb.CreateTableDef("tblCBRTableDefs")
+        
+    With tdf
+        
+        .Fields.Append .CreateField("TableName", dbText, 50)
+        .Fields.Append .CreateField("FieldName", dbText, 50)
+        .Fields.Append .CreateField("FieldType", dbText, 50)
+        .Fields.Append .CreateField("FieldSize", dbInteger)
+        
+    End With
+    
+    CurrentDb.TableDefs.Append tdf
+    
+    Set tdf = Nothing
+    
+    Application.RefreshDatabaseWindow
+    
+End Sub
+
+Sub DoIt()
+    Dim tdf As DAO.TableDef, db As DAO.Database
+    Dim rstTables As DAO.Recordset, rstTableDefs As DAO.Recordset, fld As DAO.Field
+    Dim strTableName As String, strConnection As String
+    Dim strFieldName As String, strFieldType As String, intFieldSize As Integer
+    
+    Set db = CurrentDb
+    
+    CreateCBRTablesTable
+    
+    Set rstTables = db.OpenRecordset("tblCBRTables")
+    
+    For Each tdf In CurrentDb.TableDefs
+        strTableName = tdf.Name
+        strConnection = tdf.Connect
+        
+        If Left(strTableName, 1) <> "~" Then
+            rstTables.AddNew
+            rstTables!TableName = strTableName
+            If strConnection <> "" Then rstTables!Connection = strConnection
+            rstTables.Update
+        End If
+    Next
+    
+    CreateTableDefsTable
+    Set rstTableDefs = db.OpenRecordset("tblCBRTableDefs")
+    
+    rstTables.MoveFirst
+    
+    While Not rstTables.EOF
+        strTableName = rstTables!TableName
+        
+        Set tdf = db.TableDefs(strTableName)
+        Debug.Print tdf.Name
+        
+        For Each fld In tdf.Fields
+            With rstTableDefs
+                .AddNew
+                !TableName = rstTables!TableName
+                !FieldName = fld.Name
+                !FieldType = GetFieldType(fld.Type)
+                !FieldSize = fld.Size
+                .Update
+            End With
+        Next fld
+        rstTables.MoveNext
+    Wend
+    
+    rstTables.Close
+    rstTableDefs.Close
+    
+    Set rstTables = Nothing
+    Set rstTableDefs = Nothing
+    Set tdf = Nothing
+    Set fld = Nothing
+    
+End Sub
+
+Function GetFieldType(intFieldType) As String
+
+    Select Case intFieldType
+        Case dbBigInt
+            GetFieldType = "Big Integer"
+        Case dbBinary
+            GetFieldType = "Binary"
+        Case dbBoolean
+            GetFieldType = "Boolean"
+        Case dbByte
+            GetFieldType = "Byte"
+        Case dbChar
+            GetFieldType = "Char"
+        Case dbCurrency
+            GetFieldType = "Currency"
+        Case dbDate
+            GetFieldType = "Date/Time"
+        Case dbDecimal
+            GetFieldType = "Decimal"
+        Case dbDouble
+            GetFieldType = "Double"
+        Case dbFloat
+            GetFieldType = "Float"
+        Case dbGUID
+            GetFieldType = "GUID"
+        Case dbInteger
+            GetFieldType = "Integer"
+        Case dbLong
+            GetFieldType = "Long"
+        Case dbLongBinary
+            GetFieldType = "Long Binary (OLE Object)"
+        Case dbMemo
+            GetFieldType = "Memo"
+        Case dbNumeric
+            GetFieldType = "Numeric"
+        Case dbSingle
+            GetFieldType = "Single"
+        Case dbText
+            GetFieldType = "Text"
+        Case dbTime
+            GetFieldType = "Time"
+        Case dbTimeStamp
+            GetFieldType = "Time Stamp"
+        Case dbVarBinary
+            GetFieldType = "VarBinary"
+        Case dbAttachment
+            GetFieldType = "Attachment"
+        Case dbComplexByte
+            GetFieldType = "Complex Byte"
+        Case dbComplexInteger
+            GetFieldType = "Complex Integer"
+        Case dbComplexLong
+            GetFieldType = "Complex Long"
+        Case dbComplexSingle
+            GetFieldType = "Complex Single"
+        Case dbComplexDouble
+            GetFieldType = "Complex Double"
+        Case dbComplexGUID
+            GetFieldType = "Complex GUID"
+        Case dbComplexDecimal
+            GetFieldType = "Complex Decimal"
+        Case dbComplexText
+            GetFieldType = "Complex Text"
+    End Select
+End Function
+
+Sub UnDoIt()
+    DoCmd.DeleteObject acTable, "tblCBRTables"
+    DoCmd.DeleteObject acTable, "tblCBRTableDefs"
+End Sub
+Sub ListFormsDetail(Optional strSearch As String = "")
+    Dim i As Integer, N As Integer, strFormName As String, strTempForm As String
+    Dim frm As Form, ctl As Control
+    Dim blnFound As Boolean
+    
+    blnFound = False
+    
+    N = CurrentProject.AllForms.Count
+    For i = 0 To N - 1
+        strFormName = CurrentProject.AllForms(i).FullName
+        Debug.Print "Form: " & strFormName
+        
+        
+        DoCmd.OpenForm strFormName, acDesign
+        strTempForm = "Forms!" & strFormName
+        Set frm = Forms(strFormName)
+        If InStr(1, frm.RecordSource, strSearch) > 0 Then blnFound = True
+        If blnFound Then Debug.Print frm.Name & " - " & frm.RecordSource
+        Debug.Print "Form: " & frm.Name & " - " & frm.RecordSource
+        For Each ctl In frm.Controls
+            Debug.Print ctl.Name & " - " & GetControlType(ctl.ControlType)
+        Next
+        DoCmd.Close acForm, strFormName
+    Next
+    
+    
+End Sub
+
+Sub ListFormsRecordSource(Optional strSearch As String = "")
+    Dim i As Integer, N As Integer, strFormName As String, strTempForm As String
+    Dim frm As Form, ctl As Control
+    Dim blnFound As Boolean
+    
+    blnFound = False
+    
+    N = CurrentProject.AllForms.Count
+    For i = 0 To N - 1
+        strFormName = CurrentProject.AllForms(i).FullName
+        Debug.Print "Form: " & strFormName
+        
+        
+        DoCmd.OpenForm strFormName, acDesign
+        strTempForm = "Forms!" & strFormName
+        Set frm = Forms(strFormName)
+        If frm.RecordSource <> "" Then Debug.Print "RecordSource: " & frm.RecordSource
+        DoCmd.Close acForm, strFormName
+    Next
+    
+    
+End Sub
+
+Function GetControlType(intControlType) As String
+    Dim strControlType As String
+    Select Case intControlType
+        Case 108
+            strControlType = "acBoundObjectFrame"
+        Case 106
+            strControlType = "acCheckBox"
+        Case 111
+            strControlType = "acComboBox"
+        Case 104
+            strControlType = "acCommandButton"
+        Case 119
+            strControlType = "acCustomControl"
+        Case 103
+            strControlType = "acImage"
+        Case 100
+            strControlType = "acLabel"
+        Case 102
+            strControlType = "acLine"
+        Case 110
+            strControlType = "acListBox"
+        Case 114
+            strControlType = "acObjectFrame"
+        Case 105
+            strControlType = "acOptionButton"
+        Case 107
+            strControlType = "acOptionGroup"
+        Case 124
+            strControlType = "acPage"
+        Case 118
+            strControlType = "acPageBreak"
+        Case 101
+            strControlType = "acRectangle"
+        Case 112
+            strControlType = "acSubform"
+        Case 123
+            strControlType = "acTabCtl"
+        Case 109
+            strControlType = "acTextBox"
+        Case 122
+            strControlType = "acToggleButton"
+    End Select
+    
+    GetControlType = strControlType
+End Function
+
+Sub ListReportsRecordSource()
+    Dim i As Integer, N As Integer
+    Dim rpt As Report, ctl As Control
+    Dim strReportName As String
+    Dim strTempRpt As String
+    
+    N = CurrentProject.AllReports.Count
+    
+    For i = 0 To N - 1
+        strReportName = CurrentProject.AllReports(i).FullName
+        Debug.Print CurrentProject.AllReports(i).Name
+        
+        DoCmd.OpenReport strReportName, acDesign
+        strTempRpt = "Reports!" & strReportName
+        Set rpt = Reports(strReportName)
+        If rpt.RecordSource <> "" Then Debug.Print "RecordSource: " & rpt.RecordSource
+        DoCmd.Close acReport, strReportName
+        
+    Next i
+End Sub
